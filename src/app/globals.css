@@ -1,0 +1,86 @@
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-sans: "Gowun Dodum";
+    --font-serif: "Gowun Batang";
+    --font-display: "Cormorant Garamond";
+
+    /* shadcn tokens mapped onto the 곁에 warm cream + coral system (HSL) */
+    --background: 39 47% 95%;
+    --foreground: 0 0% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 12%;
+    --primary: 14 66% 58%;
+    --primary-foreground: 39 47% 97%;
+    --secondary: 39 38% 87%;
+    --secondary-foreground: 0 0% 12%;
+    --muted: 39 30% 90%;
+    --muted-foreground: 40 9% 41%;
+    --accent: 14 66% 58%;
+    --accent-foreground: 39 47% 97%;
+    --destructive: 0 60% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 41 35% 85%;
+    --input: 41 35% 85%;
+    --ring: 14 66% 58%;
+    --radius: 1.1rem;
+  }
+
+  * { -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+
+  body {
+    @apply bg-gt-cream text-gt-ink font-sans;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection { background: rgba(220, 107, 74, 0.22); }
+}
+
+@layer components {
+  /* Warm atmospheric background — the 곁에 equivalent of selah-aurora */
+  .gt-aurora {
+    background:
+      radial-gradient(ellipse 90% 55% at 50% 0%, rgba(245, 220, 200, 0.7), transparent 65%),
+      radial-gradient(ellipse 70% 50% at 88% 100%, rgba(196, 160, 83, 0.10), transparent 60%),
+      radial-gradient(ellipse 60% 50% at 10% 92%, rgba(107, 139, 118, 0.10), transparent 60%),
+      #FAF6EE;
+    position: relative;
+  }
+  /* Paper grain overlay */
+  .gt-aurora::before {
+    content: "";
+    position: absolute; inset: 0; pointer-events: none; z-index: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' seed='5'/%3E%3CfeColorMatrix values='0 0 0 0 0.4 0 0 0 0 0.3 0 0 0 0 0.2 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+    opacity: 0.55; mix-blend-mode: multiply;
+  }
+
+  .gt-scroll { scrollbar-width: thin; scrollbar-color: rgba(196,160,83,0.5) transparent; scroll-behavior: smooth; }
+  .gt-scroll::-webkit-scrollbar { width: 5px; height: 5px; }
+  .gt-scroll::-webkit-scrollbar-thumb { background: rgba(196,160,83,0.5); border-radius: 9999px; }
+  .gt-scroll::-webkit-scrollbar-track { background: transparent; }
+
+  .gt-card {
+    @apply rounded-3xl bg-white border border-gt-line;
+    box-shadow: 0 4px 16px rgba(40,30,20,0.06), 0 1px 3px rgba(40,30,20,0.04);
+  }
+  .section-label { @apply flex items-baseline gap-3 px-1 pt-2 pb-3; }
+  .sl-num { @apply font-display italic text-[13px] text-gt-coral tracking-wider; }
+  .sl-title { @apply font-serif text-[19px] font-bold text-gt-ink flex-1; }
+}
+
+/* High-contrast accessibility mode for seniors (data-contrast="high") */
+html[data-contrast="high"] body { background: #fff !important; color: #000 !important; }
+html[data-contrast="high"] .gt-card { border-color: #000 !important; }
+
+/* Large font mode (data-fontsize="large") for seniors */
+html[data-fontsize="large"] { font-size: 19px; }
+html[data-fontsize="xlarge"] { font-size: 21px; }

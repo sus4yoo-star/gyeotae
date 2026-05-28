@@ -1,0 +1,16 @@
+{
+  "name": "곁에 (Gyeotae)",
+  "short_name": "곁에",
+  "description": "혼자 계셔도, 혼자가 아닙니다. 가족이 일하는 동안 부모님 곁에 늘 함께. AMOV.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FAF6EE",
+  "theme_color": "#FAF6EE",
+  "orientation": "portrait",
+  "lang": "ko",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
