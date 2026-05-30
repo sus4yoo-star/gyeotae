@@ -6,6 +6,8 @@ import {
   Users, CheckCircle2, Pill, HeartPulse, Mic, Play, X, MapPin, Phone,
 } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
+import { MedicationTracker } from "@/components/medication-tracker";
+import { MedicalCard } from "@/components/medical-card";
 import { fireSOS } from "@/lib/circle";
 
 export default function ParentHome() {
@@ -13,6 +15,7 @@ export default function ParentHome() {
   const [date, setDate] = useState("");
   const [sosOpen, setSosOpen] = useState(false);
   const [sosStage, setSosStage] = useState(0);
+  const [medicalOpen, setMedicalOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
@@ -56,8 +59,13 @@ export default function ParentHome() {
             </p>
           </header>
 
+          {/* 오늘의 약 — 첫 화면에서 바로 보이는 복약 체크 */}
+          <div className="mt-5">
+            <MedicationTracker onToast={showToast} />
+          </div>
+
           {/* SOS */}
-          <section className="flex flex-col items-center px-7 pb-8 pt-4">
+          <section className="flex flex-col items-center px-7 pb-8 pt-7">
             <div className="relative my-3">
               <span className="absolute -inset-2.5 animate-heartbeat rounded-full border-2 border-gt-danger/30" aria-hidden />
               <span className="absolute -inset-6 animate-heartbeat rounded-full border border-gt-danger/15" style={{ animationDelay: "0.6s" }} aria-hidden />
@@ -82,8 +90,8 @@ export default function ParentHome() {
           <section className="grid grid-cols-4 gap-2.5 px-4">
             <QuickBtn icon={Users} label="가족" sub="메시지" color="coral" badge="2" href="/family" />
             <QuickBtn icon={CheckCircle2} label="안부" sub="오늘 어때요" color="sage" href="/call" />
-            <QuickBtn icon={Pill} label="약" sub="복용 체크" color="gold" onClick={() => showToast("✓ 약 복용을 기록했어요")} />
-            <QuickBtn icon={HeartPulse} label="의료카드" sub="응급 정보" color="terra" onClick={() => showToast("🪪 응급 의료 정보 카드")} />
+            <QuickBtn icon={Pill} label="약" sub="복용 체크" color="gold" onClick={() => { window.scrollTo({ top: 0, behavior: "smooth" }); showToast("위 '오늘의 약'에서 체크하세요"); }} />
+            <QuickBtn icon={HeartPulse} label="의료카드" sub="응급 정보" color="terra" onClick={() => setMedicalOpen(true)} />
           </section>
 
           {/* 손주 편지함 */}
@@ -169,6 +177,9 @@ export default function ParentHome() {
       </main>
 
       <BottomNav />
+
+      {/* 응급 의료 정보 카드 */}
+      <MedicalCard open={medicalOpen} onClose={() => setMedicalOpen(false)} />
 
       {/* SOS Modal */}
       {sosOpen && (
