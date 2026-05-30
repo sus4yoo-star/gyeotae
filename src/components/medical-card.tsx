@@ -1,20 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { toPng } from "html-to-image";
 import {
   X, Droplet, Stethoscope, TriangleAlert, Pill, Scissors,
-  FileClock, PhoneCall, Pencil, Check,
+  FileClock, PhoneCall, Pencil, Check, Download, Share2,
 } from "lucide-react";
 
 export interface MedicalInfo {
   name: string; age: string; sex: string;
-  blood: string;
-  conditions: string;
-  allergies: string;
-  meds: string;
-  surgeries: string;
-  history: string;
-  emergency: string;
+  blood: string; conditions: string; allergies: string;
+  meds: string; surgeries: string; history: string; emergency: string;
 }
 
 const DEFAULT_INFO: MedicalInfo = {
@@ -23,33 +19,31 @@ const DEFAULT_INFO: MedicalInfo = {
   conditions: "고혈압, 당뇨(2형)",
   allergies: "페니실린, 새우",
   meds: "아침 — 혈압약(암로디핀), 당뇨약(메트포르민)\n저녁 — 콜레스테롤약(아토르바스타틴)",
-  surgeries: "2019 무릎 인공관절 수술 (부산대학교병원)",
-  history: "2015 담낭 절제술 · 2021 백내장 수술",
-  emergency: "막내딸 김미경 010-1234-5678\n주치의 박정호 (부산365의원) 051-000-0000",
+  surgeries: "2019 무릎 인공관절 (부산대병원)",
+  history: "2015 담낭 절제 · 2021 백내장",
+  emergency: "막내딸 김미경 010-1234-5678\n주치의 박정호 (부산365의원)",
 };
 
 const KEY = "gyeotae-medical";
 
-const FIELDS: { key: keyof MedicalInfo; label: string; Icon: any; tint: string; multiline?: boolean }[] = [
-  { key: "blood",      label: "혈액형",        Icon: Droplet,      tint: "#CC3A3A" },
-  { key: "conditions", label: "지병",          Icon: Stethoscope,  tint: "#9B5333" },
-  { key: "allergies",  label: "알레르기",      Icon: TriangleAlert, tint: "#C4A053" },
-  { key: "meds",       label: "복용 중인 약",   Icon: Pill,         tint: "#DC6B4A", multiline: true },
-  { key: "surgeries",  label: "수술 이력",      Icon: Scissors,     tint: "#6B8B76", multiline: true },
-  { key: "history",    label: "병력",          Icon: FileClock,    tint: "#6E6657", multiline: true },
-  { key: "emergency",  label: "응급 연락처",    Icon: PhoneCall,    tint: "#DC6B4A", multiline: true },
+const FIELDS: { key: keyof MedicalInfo; label: string; Icon: any; tint: string; full?: boolean }[] = [
+  { key: "conditions", label: "지병",        Icon: Stethoscope,   tint: "#9B5333" },
+  { key: "allergies",  label: "알레르기",     Icon: TriangleAlert, tint: "#C4A053" },
+  { key: "meds",       label: "복용 중인 약",  Icon: Pill,          tint: "#DC6B4A", full: true },
+  { key: "surgeries",  label: "수술 이력",     Icon: Scissors,      tint: "#6B8B76", full: true },
+  { key: "history",    label: "병력",         Icon: FileClock,     tint: "#6E6657", full: true },
+  { key: "emergency",  label: "응급 연락처",   Icon: PhoneCall,     tint: "#DC6B4A", full: true },
 ];
 
 export function MedicalCard({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [info, setInfo] = useState<MedicalInfo>(DEFAULT_INFO);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<MedicalInfo>(DEFAULT_INFO);
+  const [busy, setBusy] = useState(false);
+  const captureRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(KEY);
-      if (raw) { const v = JSON.parse(raw); setInfo(v); setDraft(v); }
-    } catch {}
+    try { const raw = localStorage.getItem(KEY); if (raw) { const v = JSON.parse(raw); setInfo(v); setDraft(v); } } catch {}
   }, []);
 
   if (!open) return null;
@@ -60,96 +54,121 @@ export function MedicalCard({ open, onClose }: { open: boolean; onClose: () => v
     setEditing(false);
   };
 
+  async function makePng(): Promise<string | null> {
+    if (!captureRef.current) return null;
+    return toPng(captureRef.current, { pixelRatio: 2.5, backgroundColor: "#FAF6EE", cacheBust: true });
+  }
+
+  async function saveImage() {
+    setBusy(true);
+    try {
+      const url = await makePng();
+      if (url) { const a = document.createElement("a"); a.download = `곁에-의료카드-${info.name}.png`; a.href = url; a.click(); }
+    } catch {} finally { setBusy(false); }
+  }
+
+  async function shareImage() {
+    setBusy(true);
+    try {
+      const url = await makePng();
+      if (!url) return;
+      const blob = await (await fetch(url)).blob();
+      const file = new File([blob], `곁에-의료카드-${info.name}.png`, { type: "image/png" });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: "곁에 응급 의료 정보", text: `${info.name}님의 응급 의료 정보` });
+      } else {
+        const a = document.createElement("a"); a.download = file.name; a.href = url; a.click();
+      }
+    } catch {} finally { setBusy(false); }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 backdrop-blur-sm sm:items-center sm:p-6" onClick={onClose}>
-      <div
-        className="flex max-h-[90dvh] w-full max-w-md flex-col rounded-t-[2rem] bg-gt-cream sm:rounded-[1.75rem]"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* header */}
-        <div className="shrink-0 rounded-t-[2rem] px-6 pb-5 pt-5" style={{ background: "linear-gradient(135deg,#DC6B4A,#B8543A)" }}>
-          <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/40 sm:hidden" />
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="font-display italic text-[11px] tracking-[0.16em] text-white/80">EMERGENCY MEDICAL · 응급 의료 정보</p>
-              <h3 className="mt-1 font-serif text-2xl font-bold text-white">{info.name}</h3>
-              <p className="text-sm text-white/85">{info.age}세 · {info.sex}</p>
-            </div>
-            <div className="flex items-center gap-2">
-              {!editing && (
-                <button onClick={() => { setDraft(info); setEditing(true); }} className="flex items-center gap-1 rounded-full bg-white/20 px-3 py-1.5 text-xs font-semibold text-white">
-                  <Pencil className="h-3 w-3" /> 편집
-                </button>
-              )}
-              <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-white"><X className="h-4 w-4" /></button>
-            </div>
+      <div className="flex max-h-[92dvh] w-full max-w-md flex-col rounded-t-[1.75rem] bg-gt-cream sm:rounded-[1.5rem]" onClick={(e) => e.stopPropagation()}>
+        {/* top bar */}
+        <div className="flex shrink-0 items-center justify-between px-5 pt-4 pb-2">
+          <p className="font-display italic text-[11px] tracking-[0.16em] text-gt-terra">EMERGENCY MEDICAL · 응급 의료 정보</p>
+          <div className="flex items-center gap-2">
+            {!editing && (
+              <button onClick={() => { setDraft(info); setEditing(true); }} className="flex items-center gap-1 rounded-full bg-gt-paper2 px-2.5 py-1 text-xs font-semibold text-gt-ink">
+                <Pencil className="h-3 w-3" /> 편집
+              </button>
+            )}
+            <button onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-full bg-gt-paper2 text-gt-ink"><X className="h-4 w-4" /></button>
           </div>
         </div>
 
-        {/* big blood-type strip (always most prominent for paramedics) */}
-        <div className="shrink-0 border-b border-gt-line bg-white px-6 py-3.5">
-          <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-full" style={{ background: "#FBE3E3" }}>
-              <Droplet className="h-5 w-5" style={{ color: "#CC3A3A" }} fill="#CC3A3A" />
-            </span>
-            <div className="flex-1">
-              <p className="text-[11px] font-semibold tracking-wide text-gt-muted">혈액형</p>
-              {editing ? (
-                <input value={draft.blood} onChange={(e) => setDraft({ ...draft, blood: e.target.value })}
-                  className="w-full rounded-lg border border-gt-line bg-gt-cream px-2 py-1 font-serif text-lg outline-none focus:border-gt-coral" />
-              ) : (
-                <p className="font-serif text-xl font-bold text-gt-danger">{info.blood || "—"}</p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* scrollable cards */}
-        <div className="flex-1 overflow-y-auto gt-scroll px-5 py-4">
-          <div className="space-y-3">
-            {FIELDS.filter((f) => f.key !== "blood").map((f) => (
-              <div key={f.key} className="gt-card p-4">
-                <div className="mb-2 flex items-center gap-2.5">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-xl" style={{ background: `${f.tint}1A` }}>
-                    <f.Icon className="h-4 w-4" style={{ color: f.tint }} />
-                  </span>
-                  <span className="font-serif text-[15px] font-bold text-gt-ink">{f.label}</span>
-                </div>
+        {/* scrollable capturable card */}
+        <div className="flex-1 overflow-y-auto gt-scroll px-4 pb-3">
+          <div ref={captureRef} className="overflow-hidden rounded-2xl border border-gt-line bg-white">
+            {/* compact identity + blood */}
+            <div className="flex items-center justify-between px-4 py-3" style={{ background: "linear-gradient(135deg,#DC6B4A,#B8543A)" }}>
+              <div>
                 {editing ? (
-                  f.multiline ? (
-                    <textarea value={draft[f.key]} onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })} rows={3}
-                      className="w-full resize-none rounded-xl border border-gt-line bg-gt-cream px-3 py-2 font-serif text-[14px] leading-relaxed outline-none focus:border-gt-coral" />
-                  ) : (
-                    <input value={draft[f.key]} onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })}
-                      className="w-full rounded-xl border border-gt-line bg-gt-cream px-3 py-2 font-serif text-[14px] outline-none focus:border-gt-coral" />
-                  )
+                  <div className="flex gap-1.5">
+                    <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} className="w-20 rounded bg-white/90 px-2 py-0.5 font-serif text-lg font-bold text-gt-ink outline-none" />
+                    <input value={draft.age} onChange={(e) => setDraft({ ...draft, age: e.target.value })} className="w-12 rounded bg-white/90 px-2 py-0.5 text-sm text-gt-ink outline-none" />
+                  </div>
                 ) : (
-                  <p className="whitespace-pre-line font-serif text-[14px] leading-relaxed text-gt-inkSoft">
-                    {info[f.key] || <span className="text-gt-mutedLight">아직 입력하지 않았어요</span>}
-                  </p>
+                  <h3 className="font-serif text-xl font-bold text-white">{info.name} <span className="text-sm font-normal opacity-85">{info.age}세 · {info.sex}</span></h3>
+                )}
+                <p className="font-display italic text-[10px] tracking-[0.14em] text-white/75">곁에 · GYEOTAE</p>
+              </div>
+              <div className="flex items-center gap-2 rounded-xl bg-white/95 px-3 py-1.5">
+                <Droplet className="h-4 w-4" style={{ color: "#CC3A3A" }} fill="#CC3A3A" />
+                {editing ? (
+                  <input value={draft.blood} onChange={(e) => setDraft({ ...draft, blood: e.target.value })} className="w-20 rounded bg-gt-cream px-1.5 py-0.5 font-serif text-base font-bold text-gt-danger outline-none" />
+                ) : (
+                  <span className="font-serif text-lg font-bold text-gt-danger">{info.blood || "—"}</span>
                 )}
               </div>
-            ))}
-          </div>
+            </div>
 
-          {!editing && (
-            <p className="mt-4 px-1 text-center text-[11px] leading-relaxed text-gt-mutedLight">
-              응급 상황 시 119 대원이나 의료진에게 이 화면을 보여주세요.<br />정보는 이 기기에 안전하게 저장됩니다.
-            </p>
-          )}
-        </div>
-
-        {/* footer */}
-        {editing && (
-          <div className="shrink-0 border-t border-gt-line bg-gt-cream p-4">
-            <div className="flex gap-2.5">
-              <button onClick={() => { setDraft(info); setEditing(false); }} className="flex-1 rounded-2xl bg-gt-paper2 py-3.5 font-semibold text-gt-ink">취소</button>
-              <button onClick={save} className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-gt-coral py-3.5 font-semibold text-white">
-                <Check className="h-4 w-4" /> 저장하기
-              </button>
+            {/* info grid — short fields 2-col, long fields full */}
+            <div className="grid grid-cols-2 gap-px bg-gt-line">
+              {FIELDS.map((f) => (
+                <div key={f.key} className={`bg-white p-3 ${f.full ? "col-span-2" : ""}`}>
+                  <div className="mb-1 flex items-center gap-1.5">
+                    <f.Icon className="h-3.5 w-3.5" style={{ color: f.tint }} />
+                    <span className="font-display text-[11px] font-semibold tracking-wide text-gt-muted">{f.label}</span>
+                  </div>
+                  {editing ? (
+                    f.full ? (
+                      <textarea value={draft[f.key]} onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })} rows={2}
+                        className="w-full resize-none rounded-lg border border-gt-line bg-gt-cream px-2 py-1.5 font-serif text-[13px] leading-relaxed outline-none focus:border-gt-coral" />
+                    ) : (
+                      <input value={draft[f.key]} onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })}
+                        className="w-full rounded-lg border border-gt-line bg-gt-cream px-2 py-1.5 font-serif text-[13px] outline-none focus:border-gt-coral" />
+                    )
+                  ) : (
+                    <p className="whitespace-pre-line font-serif text-[13px] leading-snug text-gt-inkSoft">
+                      {info[f.key] || <span className="text-gt-mutedLight">—</span>}
+                    </p>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
-        )}
+        </div>
+
+        {/* footer actions */}
+        <div className="shrink-0 border-t border-gt-line bg-gt-cream p-4">
+          {editing ? (
+            <div className="flex gap-2.5">
+              <button onClick={() => { setDraft(info); setEditing(false); }} className="flex-1 rounded-2xl bg-gt-paper2 py-3 font-semibold text-gt-ink">취소</button>
+              <button onClick={save} className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-gt-coral py-3 font-semibold text-white"><Check className="h-4 w-4" /> 저장하기</button>
+            </div>
+          ) : (
+            <div className="flex gap-2.5">
+              <button onClick={saveImage} disabled={busy} className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-gt-paper2 py-3 font-semibold text-gt-ink disabled:opacity-50">
+                <Download className="h-4 w-4" /> {busy ? "처리 중…" : "이미지 저장"}
+              </button>
+              <button onClick={shareImage} disabled={busy} className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-gt-coral py-3 font-semibold text-white disabled:opacity-50">
+                <Share2 className="h-4 w-4" /> 공유하기
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -4,10 +4,13 @@ import { useState } from "react";
 import { Mic, Video, Send, ShieldPlus, CheckCircle2, Circle } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { PushManager } from "@/components/push-manager";
+import { MedicalCard } from "@/components/medical-card";
+import { MedicationStatusCard } from "@/components/medication-tracker";
 
 export default function FamilyDashboard() {
   const [warmth, setWarmth] = useState(67);
   const [toast, setToast] = useState<string | null>(null);
+  const [medicalOpen, setMedicalOpen] = useState(false);
   const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(null), 3000); };
   const bump = (n: number) => { setWarmth((w) => Math.min(100, w + n)); showToast(`💛 온기 점수가 +${n} 올랐어요`); };
 
@@ -83,6 +86,11 @@ export default function FamilyDashboard() {
             </div>
           </section>
 
+          {/* 오늘 부모님 복약 현황 (부모님 화면과 동기화) */}
+          <section className="mt-4 px-5">
+            <MedicationStatusCard />
+          </section>
+
           {/* Status card */}
           <section className="mt-4 px-5">
             <div className="gt-card overflow-hidden">
@@ -95,7 +103,7 @@ export default function FamilyDashboard() {
               </div>
               <div className="grid grid-cols-2 gap-px bg-gt-line">
                 <StatusCell label="AI MORNING CALL" value="응답 완료" sub="today, 7:30 AM" ok />
-                <StatusCell label="MEDICATION" value="복용 완료" sub="today, 8:14 AM" ok />
+                <StatusCell label="MEAL · 식사" value="아침 드심" sub="today, 8:05 AM" ok />
                 <StatusCell label="LAST ACTIVITY" value="방금" sub="phone activity" ok />
                 <StatusCell label="LOCATION" value="자택" sub="Busan, 동래구" ok />
               </div>
@@ -107,7 +115,7 @@ export default function FamilyDashboard() {
             <ActionBtn icon={Mic} main="음성 보내기" sub="엄마에게" color="coral" onClick={() => bump(5)} />
             <ActionBtn icon={Video} main="영상통화" sub="바로 연결" color="sage" onClick={() => showToast("📹 영상통화 연결 중...")} />
             <ActionBtn icon={Send} main="손주 영상" sub="엄마께 전달" color="gold" onClick={() => bump(5)} />
-            <ActionBtn icon={ShieldPlus} main="의료카드" sub="응급 정보" color="danger" onClick={() => showToast("🪪 응급 의료 정보 카드")} />
+            <ActionBtn icon={ShieldPlus} main="의료카드" sub="응급 정보" color="danger" onClick={() => setMedicalOpen(true)} />
           </section>
 
           {/* Activity feed */}
@@ -128,6 +136,9 @@ export default function FamilyDashboard() {
       </main>
 
       <BottomNav />
+
+      {/* 응급 의료 정보 카드 */}
+      <MedicalCard open={medicalOpen} onClose={() => setMedicalOpen(false)} />
 
       {toast && (
         <div className="fixed left-1/2 top-4 z-[60] -translate-x-1/2 animate-rise rounded-2xl bg-gt-ink px-5 py-3.5 text-sm text-white shadow-2xl">{toast}</div>
