@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
-  Users, CheckCircle2, Pill, HeartPulse, Mic, Play, X, MapPin, Phone,
+  Users, CheckCircle2, Pill, HeartPulse, Mic, Play, X, MapPin, Phone, Lock,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { useParentMode } from "@/lib/device";
 import { BottomNav } from "@/components/bottom-nav";
 import { MedicationTracker } from "@/components/medication-tracker";
 import { MealTracker } from "@/components/meal-tracker";
@@ -13,7 +15,9 @@ import { MedicalCard } from "@/components/medical-card";
 import { fireSOS, useMyCircle } from "@/lib/circle";
 
 export default function ParentHome() {
+  const router = useRouter();
   const circle = useMyCircle();
+  const [parentMode, setParentMode] = useParentMode();
   const [time, setTime] = useState("");
   const [date, setDate] = useState("");
   const [sosOpen, setSosOpen] = useState(false);
@@ -34,6 +38,13 @@ export default function ParentHome() {
 
   const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(null), 3000); };
 
+  const exitParentMode = () => {
+    if (window.confirm("부모님 기기 모드를 해제할까요? 자녀 화면이 다시 보입니다.")) {
+      setParentMode(false);
+      router.push("/family");
+    }
+  };
+
   const triggerSOS = () => {
     setSosOpen(true);
     setSosStage(0);
@@ -48,9 +59,17 @@ export default function ParentHome() {
         <div className="relative z-10">
           {/* Editorial header */}
           <header className="px-7 pt-8 pb-2">
-            <p className="mb-1 flex items-center gap-2 font-display italic text-[13px] tracking-[0.12em] text-gt-terra">
-              <span className="inline-block h-px w-6 bg-gt-terra" /> TODAY · 오늘
-            </p>
+            <div className="mb-1 flex items-center justify-between">
+              <p className="flex items-center gap-2 font-display italic text-[13px] tracking-[0.12em] text-gt-terra">
+                <span className="inline-block h-px w-6 bg-gt-terra" /> TODAY · 오늘
+              </p>
+              {parentMode && (
+                <button onClick={exitParentMode} aria-label="부모님 기기 모드 해제"
+                  className="flex h-7 w-7 items-center justify-center rounded-full bg-gt-paper2 text-gt-mutedLight active:scale-95">
+                  <Lock className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
             <p className="mb-1 font-serif text-base text-gt-muted">{date}</p>
             <div className="font-display text-[88px] font-medium leading-none tracking-tight text-gt-ink">
               {time.split(":")[0]}<span className="animate-blink">:</span>{time.split(":")[1]}

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Mic, Video, Send, ShieldPlus, CheckCircle2, Circle, Heart, UserPlus, UserMinus, Shield, ArrowRight } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Mic, Video, Send, ShieldPlus, CheckCircle2, Circle, Heart, UserPlus, UserMinus, Shield, ArrowRight, Smartphone } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { PushManager } from "@/components/push-manager";
@@ -10,9 +11,12 @@ import { MedicalCard } from "@/components/medical-card";
 import { MedicationStatusCard } from "@/components/medication-tracker";
 import { Button } from "@/components/ui/button";
 import { useCircleState, useCircleEvents, useCircleMembers, updateMemberRole, removeMember } from "@/lib/circle";
+import { useParentMode } from "@/lib/device";
 import type { CareEvent, CircleMember, CareCircle } from "@/lib/types";
 
 export default function FamilyDashboard() {
+  const router = useRouter();
+  const [parentMode, setParentMode] = useParentMode();
   const { circle, status } = useCircleState();
   const events = useCircleEvents(circle?.id);
   const { members, meId, reload } = useCircleMembers(circle?.id);
@@ -20,6 +24,9 @@ export default function FamilyDashboard() {
   const [toast, setToast] = useState<string | null>(null);
   const [medicalOpen, setMedicalOpen] = useState(false);
   const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(null), 3000); };
+
+  // This device is locked to the parent view — keep it on /home.
+  useEffect(() => { if (parentMode) router.replace("/home"); }, [parentMode, router]);
 
   const toggleRole = async (m: CircleMember) => {
     const next = m.role === "admin" ? "member" : "admin";
@@ -216,6 +223,20 @@ export default function FamilyDashboard() {
                 )}
               </div>
             </div>
+          </section>
+
+          {/* 부모님 기기로 설정 */}
+          <section className="mt-5 px-5">
+            <button
+              onClick={() => { setParentMode(true); showToast("📱 이 기기를 부모님 기기로 설정했어요"); router.replace("/home"); }}
+              className="flex w-full items-center gap-3 rounded-2xl border border-gt-line bg-white/60 px-4 py-3.5 text-left active:scale-[0.99] transition-transform"
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gt-sageLight text-gt-sage"><Smartphone className="h-4.5 w-4.5" style={{ width: 18, height: 18 }} /></span>
+              <span className="flex-1">
+                <span className="block text-[13px] font-semibold text-gt-ink">이 기기를 부모님 기기로 설정</span>
+                <span className="block text-[11px] leading-snug text-gt-muted">부모님 화면만 보이고, 자녀 화면·관리 메뉴는 숨겨져요</span>
+              </span>
+            </button>
           </section>
         </div>
       </main>
