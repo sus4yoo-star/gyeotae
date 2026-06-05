@@ -2,30 +2,46 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Mic, Video, Send, ShieldPlus, CheckCircle2, Circle, Heart, UserPlus, ArrowRight } from "lucide-react";
+import { Mic, Video, Send, ShieldPlus, CheckCircle2, Circle, Heart, UserPlus, UserMinus, Shield, ArrowRight } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { PushManager } from "@/components/push-manager";
 import { MedicalCard } from "@/components/medical-card";
 import { MedicationStatusCard } from "@/components/medication-tracker";
 import { Button } from "@/components/ui/button";
-import { useCircleState, useCircleEvents, useCircleMembers } from "@/lib/circle";
-import type { CareEvent, CircleMember } from "@/lib/types";
+import { useCircleState, useCircleEvents, useCircleMembers, updateMemberRole, removeMember } from "@/lib/circle";
+import type { CareEvent, CircleMember, CareCircle } from "@/lib/types";
 
 export default function FamilyDashboard() {
   const { circle, status } = useCircleState();
   const events = useCircleEvents(circle?.id);
-  const { members, meId } = useCircleMembers(circle?.id);
+  const { members, meId, reload } = useCircleMembers(circle?.id);
   const [warmth, setWarmth] = useState(67);
   const [toast, setToast] = useState<string | null>(null);
   const [medicalOpen, setMedicalOpen] = useState(false);
   const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(null), 3000); };
+
+  const toggleRole = async (m: CircleMember) => {
+    const next = m.role === "admin" ? "member" : "admin";
+    try {
+      await updateMemberRole(m.id, next);
+      showToast(next === "admin" ? `${m.display_name || "가족"} 님을 관리자로 지정했어요` : `${m.display_name || "가족"} 님을 일반 구성원으로 변경했어요`);
+      reload();
+    } catch { showToast("권한 변경에 실패했어요"); }
+  };
+  const kickMember = async (m: CircleMember) => {
+    if (!window.confirm(`${m.display_name || "이 가족"} 님을 모임에서 내보낼까요?`)) return;
+    try { await removeMember(m.id); showToast(`${m.display_name || "가족"} 님을 내보냈어요`); reload(); }
+    catch { showToast("내보내기에 실패했어요"); }
+  };
   const bump = (n: number) => { setWarmth((w) => Math.min(100, w + n)); showToast(`💛 온기 점수가 +${n} 올랐어요`); };
 
   const week = [14, 24, 42, 18, 30, 22, 46];
   const days = ["금", "토", "일", "월", "화", "수", "오늘"];
   const parentName = circle?.parent_name || "이옥자";
   const myName = members.find((m) => m.user_id === meId)?.display_name || "미경";
+  const iAmAdmin = !!circle && (members.find((m) => m.user_id === meId)?.role === "admin" || circle.owner_id === meId);
+  const ps = parentStatus(events, circle);
 
   // Logged in but not in a circle yet → invite them to set one up.
   if (status === "needs-onboarding") {
@@ -132,14 +148,14 @@ export default function FamilyDashboard() {
                 <span className="h-2.5 w-2.5 rounded-full bg-gt-sage" style={{ boxShadow: "0 0 0 4px rgba(107,139,118,0.2)" }} />
                 <div className="flex-1">
                   <p className="font-display italic text-[11px] text-gt-muted">PARENT&apos;S STATUS · 오늘 부모님 상태</p>
-                  <p className="font-serif text-[15px] text-gt-ink">평안하세요. 모닝콜 응답 완료, 활동 정상</p>
+                  <p className="font-serif text-[15px] text-gt-ink">{ps.headline}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-px bg-gt-line">
-                <StatusCell label="AI MORNING CALL" value="응답 완료" sub="today, 7:30 AM" ok />
-                <StatusCell label="MEAL · 식사" value="아침 드심" sub="today, 8:05 AM" ok />
-                <StatusCell label="LAST ACTIVITY" value="방금" sub="phone activity" ok />
-                <StatusCell label="LOCATION" value="자택" sub="Busan, 동래구" ok />
+                <StatusCell label="AI MORNING CALL" value={ps.call.value} sub={ps.call.sub} ok={ps.call.ok} />
+                <StatusCell label="MEAL · 식사" value={ps.meal.value} sub={ps.meal.sub} ok={ps.meal.ok} />
+                <StatusCell label="LAST ACTIVITY" value={ps.activity.value} sub={ps.activity.sub} ok={ps.activity.ok} />
+                <StatusCell label="LOCATION" value={ps.location.value} sub={ps.location.sub} ok={ps.location.ok} />
               </div>
             </div>
           </section>
@@ -161,7 +177,12 @@ export default function FamilyDashboard() {
                   <span className="rounded-full bg-gt-sageSoft px-2.5 py-1 font-display italic text-xs text-gt-sage">{members.length}명</span>
                 </div>
                 <div className="divide-y divide-gt-line">
-                  {members.map((m) => <MemberRow key={m.id} m={m} isMe={m.user_id === meId} />)}
+                  {members.map((m) => (
+                    <MemberRow key={m.id} m={m} isMe={m.user_id === meId}
+                      isOwner={m.user_id === circle?.owner_id}
+                      canManage={iAmAdmin && m.user_id !== meId && m.user_id !== circle?.owner_id}
+                      onToggleRole={() => toggleRole(m)} onRemove={() => kickMember(m)} />
+                  ))}
                 </div>
               </div>
             </section>
@@ -212,7 +233,7 @@ export default function FamilyDashboard() {
 }
 
 const EVENT_EMOJI: Record<string, string> = {
-  sos: "🚨", med: "💊", checkin: "✓", silence: "🔕", memoir: "🎙️", message: "💬", video: "🎬",
+  sos: "🚨", med: "💊", meal: "🍚", checkin: "✓", silence: "🔕", memoir: "🎙️", message: "💬", video: "🎬",
 };
 function eventDisplay(e: CareEvent): { emoji: string; text: React.ReactNode } {
   return { emoji: EVENT_EMOJI[e.type] || "💛", text: e.message || "활동이 기록되었어요" };
@@ -230,7 +251,59 @@ function relativeTime(iso: string): string {
   return new Date(iso).toLocaleDateString("ko-KR", { month: "long", day: "numeric" });
 }
 
-function MemberRow({ m, isMe }: { m: CircleMember; isMe: boolean }) {
+const hhmm = (iso: string) => new Date(iso).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+const isToday = (iso: string) => new Date(iso).toDateString() === new Date().toDateString();
+const TYPE_LABEL: Record<string, string> = {
+  sos: "긴급 SOS", med: "복약", checkin: "모닝콜", meal: "식사",
+  memoir: "이야기 기록", message: "메시지", video: "영상", silence: "무응답",
+};
+
+type Cell = { value: string; sub: string; ok: boolean };
+type ParentStatus = { headline: string; call: Cell; meal: Cell; activity: Cell; location: Cell };
+
+/** Derives the "오늘 부모님 상태" card from real events. Falls back to the
+ *  demo snapshot when there's no circle (events === null). */
+function parentStatus(events: CareEvent[] | null, circle: CareCircle | null): ParentStatus {
+  if (events === null) {
+    return {
+      headline: "평안하세요. 모닝콜 응답 완료, 활동 정상",
+      call: { value: "응답 완료", sub: "today, 7:30 AM", ok: true },
+      meal: { value: "아침 드심", sub: "today, 8:05 AM", ok: true },
+      activity: { value: "방금", sub: "phone activity", ok: true },
+      location: { value: "자택", sub: "Busan, 동래구", ok: true },
+    };
+  }
+  const today = events.filter((e) => isToday(e.created_at));
+  const checkin = today.find((e) => e.type === "checkin");
+  const meals = today.filter((e) => e.type === "meal");
+  const sos = today.find((e) => e.type === "sos");
+  const latest = events[0];
+  const loc = circle?.parent_location?.trim();
+
+  const call: Cell = checkin
+    ? { value: "응답 완료", sub: `오늘 ${hhmm(checkin.created_at)}`, ok: true }
+    : { value: "대기 중", sub: "오늘 안부 전", ok: false };
+  const meal: Cell = meals.length
+    ? { value: `${meals.length}끼 드심`, sub: `최근 ${hhmm(meals[0].created_at)}`, ok: true }
+    : { value: "기록 없음", sub: "오늘 식사 전", ok: false };
+  const activity: Cell = latest
+    ? { value: relativeTime(latest.created_at), sub: TYPE_LABEL[latest.type] || "활동", ok: true }
+    : { value: "기록 없음", sub: "오늘 활동 없음", ok: false };
+  const location: Cell = loc
+    ? { value: loc, sub: "등록된 지역", ok: true }
+    : { value: "미설정", sub: "지역 미등록", ok: false };
+
+  const headline = sos ? "🚨 SOS 발생 — 지금 확인해주세요"
+    : call.ok ? "안부 확인 완료, 평안하세요"
+    : "오늘 안부를 기다리고 있어요";
+  return { headline, call, meal, activity, location };
+}
+
+interface MemberRowProps {
+  m: CircleMember; isMe: boolean; isOwner: boolean; canManage: boolean;
+  onToggleRole: () => void; onRemove: () => void;
+}
+function MemberRow({ m, isMe, isOwner, canManage, onToggleRole, onRemove }: MemberRowProps) {
   const name = m.display_name || "가족";
   return (
     <div className="flex items-center gap-3 px-5 py-3">
@@ -243,8 +316,20 @@ function MemberRow({ m, isMe }: { m: CircleMember; isMe: boolean }) {
         </p>
         <p className="text-[11px] text-gt-muted">{m.relation || "가족"}</p>
       </div>
-      {m.role === "admin" && (
-        <span className="rounded-full bg-gt-coralSoft px-2 py-0.5 text-[10px] font-semibold text-gt-coral">관리자</span>
+      {(isOwner || m.role === "admin") && (
+        <span className="rounded-full bg-gt-coralSoft px-2 py-0.5 text-[10px] font-semibold text-gt-coral">{isOwner ? "소유자" : "관리자"}</span>
+      )}
+      {canManage && (
+        <div className="flex items-center gap-1.5">
+          <button onClick={onToggleRole} title={m.role === "admin" ? "관리자 해제" : "관리자 지정"}
+            className="flex h-7 w-7 items-center justify-center rounded-full bg-gt-paper2 text-gt-muted active:scale-95">
+            <Shield className={`h-3.5 w-3.5 ${m.role === "admin" ? "text-gt-coral" : ""}`} />
+          </button>
+          <button onClick={onRemove} title="내보내기"
+            className="flex h-7 w-7 items-center justify-center rounded-full bg-gt-dangerSoft text-gt-danger active:scale-95">
+            <UserMinus className="h-3.5 w-3.5" />
+          </button>
+        </div>
       )}
     </div>
   );

@@ -175,23 +175,37 @@ export function useCircleEvents(circleId?: string | null, limit = 20): CareEvent
 }
 
 /** A circle's members plus the current user's id (to highlight "me"). */
-export function useCircleMembers(circleId?: string | null): { members: CircleMember[]; meId: string | null } {
+export function useCircleMembers(circleId?: string | null): { members: CircleMember[]; meId: string | null; reload: () => void } {
   const [members, setMembers] = useState<CircleMember[]>([]);
   const [meId, setMeId] = useState<string | null>(null);
-  useEffect(() => {
+
+  const reload = useCallback(async () => {
     if (!circleId) { setMembers([]); setMeId(null); return; }
     const sb = createClient();
     if (!sb) return;
-    let live = true;
-    (async () => {
-      const { data: { user } } = await sb.auth.getUser();
-      if (!live) return;
-      setMeId(user?.id ?? null);
-      const { data } = await sb.from("circle_members").select("*")
-        .eq("circle_id", circleId).order("created_at", { ascending: true });
-      if (live) setMembers((data as CircleMember[]) ?? []);
-    })();
-    return () => { live = false; };
+    const { data: { user } } = await sb.auth.getUser();
+    setMeId(user?.id ?? null);
+    const { data } = await sb.from("circle_members").select("*")
+      .eq("circle_id", circleId).order("created_at", { ascending: true });
+    setMembers((data as CircleMember[]) ?? []);
   }, [circleId]);
-  return { members, meId };
+
+  useEffect(() => { reload().catch(() => {}); }, [reload]);
+  return { members, meId, reload };
+}
+
+/** Admin-only: change a member's role (member ↔ admin). Enforced by RLS. */
+export async function updateMemberRole(memberId: string, role: "admin" | "member") {
+  const sb = createClient();
+  if (!sb) return;
+  const { error } = await sb.from("circle_members").update({ role }).eq("id", memberId);
+  if (error) throw new Error(error.message);
+}
+
+/** Admin-only: remove a member from the circle. Enforced by RLS. */
+export async function removeMember(memberId: string) {
+  const sb = createClient();
+  if (!sb) return;
+  const { error } = await sb.from("circle_members").delete().eq("id", memberId);
+  if (error) throw new Error(error.message);
 }

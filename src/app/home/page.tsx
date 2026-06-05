@@ -8,6 +8,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { MedicationTracker } from "@/components/medication-tracker";
+import { MealTracker } from "@/components/meal-tracker";
 import { MedicalCard } from "@/components/medical-card";
 import { fireSOS, useMyCircle } from "@/lib/circle";
 
@@ -64,6 +65,11 @@ export default function ParentHome() {
           {/* 오늘의 약 — 첫 화면에서 바로 보이는 복약 체크 */}
           <div className="mt-5">
             <MedicationTracker onToast={showToast} circleId={circle?.id ?? null} />
+          </div>
+
+          {/* 오늘의 식사 */}
+          <div className="mt-3">
+            <MealTracker onToast={showToast} circleId={circle?.id ?? null} />
           </div>
 
           {/* SOS */}

@@ -75,6 +75,18 @@ returns boolean language sql security definer stable as $$
   );
 $$;
 
+-- 헬퍼: 현재 사용자가 특정 모임의 관리자(admin)이거나 모임 소유자인지
+create or replace function public.is_circle_admin(cid uuid)
+returns boolean language sql security definer stable as $$
+  select exists(
+    select 1 from public.circle_members m
+    where m.circle_id = cid and m.user_id = auth.uid() and m.role = 'admin'
+  ) or exists(
+    select 1 from public.care_circles c
+    where c.id = cid and c.owner_id = auth.uid()
+  );
+$$;
+
 -- ============================================================
 -- 초대코드로 모임 합류 (비구성원은 RLS로 모임을 읽을 수 없으므로
 -- security definer 함수로 조회+가입을 안전하게 처리)
@@ -128,6 +140,13 @@ create policy "self join" on public.circle_members
 drop policy if exists "self leave" on public.circle_members;
 create policy "self leave" on public.circle_members
   for delete using (user_id = auth.uid());
+-- 관리자는 같은 모임 구성원의 역할 변경/내보내기 가능
+drop policy if exists "admin updates members" on public.circle_members;
+create policy "admin updates members" on public.circle_members
+  for update using (public.is_circle_admin(circle_id)) with check (public.is_circle_admin(circle_id));
+drop policy if exists "admin removes members" on public.circle_members;
+create policy "admin removes members" on public.circle_members
+  for delete using (public.is_circle_admin(circle_id));
 
 -- care_events: 모임 구성원이면 읽고 쓰기
 drop policy if exists "members read events" on public.care_events;

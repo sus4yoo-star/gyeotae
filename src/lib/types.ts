@@ -1,6 +1,6 @@
 export type Relation = "막내딸" | "큰아들" | "큰며느리" | "둘째아들" | "며느리" | "가족";
 export type MemberRole = "admin" | "member";
-export type EventType = "sos" | "med" | "checkin" | "silence" | "memoir" | "message" | "video";
+export type EventType = "sos" | "med" | "meal" | "checkin" | "silence" | "memoir" | "message" | "video";
 
 export interface CareCircle {
   id: string;
