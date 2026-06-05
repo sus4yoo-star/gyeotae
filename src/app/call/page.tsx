@@ -29,6 +29,8 @@ export default function CallPage() {
   const scroller = useRef<HTMLDivElement>(null);
 
   useEffect(() => { scroller.current?.scrollTo({ top: 999999, behavior: "smooth" }); }, [msgs, typing]);
+  // Kick off the opening greeting once on mount.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { const t = setTimeout(start, 700); return () => clearTimeout(t); }, []);
 
   async function callApi(payload: any): Promise<string | null> {

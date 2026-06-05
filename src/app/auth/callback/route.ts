@@ -1,7 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
 export const dynamic = "force-dynamic";
+
+type CookieToSet = { name: string; value: string; options: CookieOptions };
 
 /**
  * OAuth / 매직링크 콜백.
@@ -30,7 +32,7 @@ export async function GET(request: NextRequest) {
     const supabase = createServerClient(url, anon, {
       cookies: {
         getAll() { return request.cookies.getAll(); },
-        setAll(toSet) {
+        setAll(toSet: CookieToSet[]) {
           toSet.forEach(({ name, value, options }) => {
             request.cookies.set(name, value);
             response.cookies.set(name, value, options);

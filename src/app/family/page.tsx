@@ -2,12 +2,15 @@
 
 import { useState } from "react";
 import { Mic, Video, Send, ShieldPlus, CheckCircle2, Circle } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { PushManager } from "@/components/push-manager";
 import { MedicalCard } from "@/components/medical-card";
 import { MedicationStatusCard } from "@/components/medication-tracker";
+import { useMyCircle } from "@/lib/circle";
 
 export default function FamilyDashboard() {
+  const circle = useMyCircle();
   const [warmth, setWarmth] = useState(67);
   const [toast, setToast] = useState<string | null>(null);
   const [medicalOpen, setMedicalOpen] = useState(false);
@@ -29,7 +32,7 @@ export default function FamilyDashboard() {
                 <h1 className="mb-1 font-serif text-3xl text-gt-ink">미경 님, 안녕하세요</h1>
                 <p className="text-sm text-gt-muted"><strong className="text-gt-coral">이옥자 어머니</strong>의 곁에를 지키고 있어요</p>
               </div>
-              <PushManager />
+              <PushManager circleId={circle?.id} />
             </div>
           </header>
 
@@ -88,7 +91,7 @@ export default function FamilyDashboard() {
 
           {/* 오늘 부모님 복약 현황 (부모님 화면과 동기화) */}
           <section className="mt-4 px-5">
-            <MedicationStatusCard />
+            <MedicationStatusCard circleId={circle?.id ?? null} />
           </section>
 
           {/* Status card */}
@@ -147,7 +150,8 @@ export default function FamilyDashboard() {
   );
 }
 
-function StatusCell({ label, value, sub, ok }: any) {
+interface StatusCellProps { label: string; value: string; sub: string; ok?: boolean }
+function StatusCell({ label, value, sub, ok }: StatusCellProps) {
   return (
     <div className="bg-white p-4">
       <p className="mb-1.5 font-display italic text-[11px] tracking-wide text-gt-muted">{label}</p>
@@ -159,8 +163,10 @@ function StatusCell({ label, value, sub, ok }: any) {
   );
 }
 
-function ActionBtn({ icon: Icon, main, sub, color, onClick }: any) {
-  const bg: any = { coral: "bg-gt-coralLight text-gt-coralDeep", sage: "bg-gt-sageLight text-gt-sage", gold: "bg-gt-goldSoft text-gt-gold", danger: "bg-gt-dangerSoft text-gt-danger" };
+type ActionTone = "coral" | "sage" | "gold" | "danger";
+interface ActionBtnProps { icon: LucideIcon; main: string; sub: string; color: ActionTone; onClick?: () => void }
+function ActionBtn({ icon: Icon, main, sub, color, onClick }: ActionBtnProps) {
+  const bg: Record<ActionTone, string> = { coral: "bg-gt-coralLight text-gt-coralDeep", sage: "bg-gt-sageLight text-gt-sage", gold: "bg-gt-goldSoft text-gt-gold", danger: "bg-gt-dangerSoft text-gt-danger" };
   return (
     <button onClick={onClick} className="gt-card flex items-center gap-3 p-3.5 text-left active:scale-[0.98] transition-transform">
       <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${bg[color]}`}><Icon className="h-4.5 w-4.5" style={{ width: 18, height: 18 }} /></span>
@@ -169,7 +175,8 @@ function ActionBtn({ icon: Icon, main, sub, color, onClick }: any) {
   );
 }
 
-function FeedItem({ emoji, text, time }: any) {
+interface FeedItemProps { emoji: string; text: React.ReactNode; time: string }
+function FeedItem({ emoji, text, time }: FeedItemProps) {
   return (
     <div className="flex gap-3 px-5 py-3">
       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gt-coralLight text-sm">{emoji}</span>

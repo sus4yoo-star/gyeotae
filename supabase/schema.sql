@@ -53,6 +53,17 @@ create table if not exists public.push_subscriptions (
   created_at timestamptz default now()
 );
 
+-- 6) 복약 기록 (부모님↔자녀 기기 간 동기화용, 날짜·복용시간대별 1행)
+create table if not exists public.med_logs (
+  circle_id uuid not null references public.care_circles(id) on delete cascade,
+  log_date date not null,
+  dose text not null,                    -- morning|lunch|evening
+  taken_at text,                         -- "HH:MM" (복용함) 또는 null (미복용)
+  updated_by uuid references auth.users(id) on delete set null,
+  updated_at timestamptz default now(),
+  primary key (circle_id, log_date, dose)
+);
+
 -- ============================================================
 -- 헬퍼: 현재 사용자가 특정 모임의 구성원인지
 -- ============================================================
@@ -72,6 +83,7 @@ alter table public.care_circles      enable row level security;
 alter table public.circle_members    enable row level security;
 alter table public.care_events       enable row level security;
 alter table public.push_subscriptions enable row level security;
+alter table public.med_logs          enable row level security;
 
 -- profiles: 본인만
 drop policy if exists "own profile" on public.profiles;
@@ -109,6 +121,14 @@ create policy "members write events" on public.care_events
 drop policy if exists "own push" on public.push_subscriptions;
 create policy "own push" on public.push_subscriptions
   for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- med_logs: 모임 구성원이면 읽고 쓰기 (부모님↔자녀 동기화)
+drop policy if exists "members read meds" on public.med_logs;
+create policy "members read meds" on public.med_logs
+  for select using (public.is_circle_member(circle_id));
+drop policy if exists "members write meds" on public.med_logs;
+create policy "members write meds" on public.med_logs
+  for all using (public.is_circle_member(circle_id)) with check (public.is_circle_member(circle_id));
 
 -- ============================================================
 -- 가입 시 프로필 자동 생성

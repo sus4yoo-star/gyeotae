@@ -13,6 +13,11 @@ export function Splash() {
   const [gone, setGone] = useState(false);
 
   useEffect(() => {
+    // Show the brand moment once per browser session, not on every navigation/reload.
+    let alreadyShown = false;
+    try { alreadyShown = sessionStorage.getItem("gt-splashed") === "1"; } catch {}
+    if (alreadyShown) { setHide(true); setGone(true); return; }
+    try { sessionStorage.setItem("gt-splashed", "1"); } catch {}
     const t1 = setTimeout(() => setHide(true), 1600);
     const t2 = setTimeout(() => setGone(true), 2300);
     return () => { clearTimeout(t1); clearTimeout(t2); };

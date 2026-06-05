@@ -5,12 +5,14 @@ import Link from "next/link";
 import {
   Users, CheckCircle2, Pill, HeartPulse, Mic, Play, X, MapPin, Phone,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { MedicationTracker } from "@/components/medication-tracker";
 import { MedicalCard } from "@/components/medical-card";
-import { fireSOS } from "@/lib/circle";
+import { fireSOS, useMyCircle } from "@/lib/circle";
 
 export default function ParentHome() {
+  const circle = useMyCircle();
   const [time, setTime] = useState("");
   const [date, setDate] = useState("");
   const [sosOpen, setSosOpen] = useState(false);
@@ -36,7 +38,7 @@ export default function ParentHome() {
     setSosStage(0);
     [1, 2, 3, 4].forEach((n) => setTimeout(() => setSosStage(n), n * 700));
     // Real mode: log the event and push to the whole family (safe no-op in demo).
-    fireSOS(null).catch(() => {});
+    fireSOS(circle?.id ?? null).catch(() => {});
   };
 
   return (
@@ -61,7 +63,7 @@ export default function ParentHome() {
 
           {/* 오늘의 약 — 첫 화면에서 바로 보이는 복약 체크 */}
           <div className="mt-5">
-            <MedicationTracker onToast={showToast} />
+            <MedicationTracker onToast={showToast} circleId={circle?.id ?? null} />
           </div>
 
           {/* SOS */}
@@ -226,8 +228,19 @@ export default function ParentHome() {
 }
 
 /* ---------- sub-components ---------- */
-function QuickBtn({ icon: Icon, label, sub, color, badge, href, onClick }: any) {
-  const bg: any = { coral: "bg-gt-coralLight text-gt-coralDeep", sage: "bg-gt-sageLight text-gt-sage", gold: "bg-gt-goldSoft text-gt-gold", terra: "bg-[#F0DBC9] text-gt-terra" };
+type Tone = "coral" | "sage" | "gold" | "terra";
+
+interface QuickBtnProps {
+  icon: LucideIcon;
+  label: string;
+  sub: string;
+  color: Tone;
+  badge?: string;
+  href?: string;
+  onClick?: () => void;
+}
+function QuickBtn({ icon: Icon, label, sub, color, badge, href, onClick }: QuickBtnProps) {
+  const bg: Record<Tone, string> = { coral: "bg-gt-coralLight text-gt-coralDeep", sage: "bg-gt-sageLight text-gt-sage", gold: "bg-gt-goldSoft text-gt-gold", terra: "bg-[#F0DBC9] text-gt-terra" };
   const inner = (
     <div className="relative flex flex-col items-center gap-2 rounded-[22px] border border-gt-line bg-white/70 px-1 py-4 backdrop-blur active:scale-95 transition-transform" style={{ boxShadow: "0 4px 16px rgba(40,30,20,0.06)" }}>
       {badge && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-gt-cream bg-gt-coral px-1 text-[10px] font-bold text-white">{badge}</span>}
@@ -239,7 +252,15 @@ function QuickBtn({ icon: Icon, label, sub, color, badge, href, onClick }: any) 
   return href ? <Link href={href}>{inner}</Link> : <button onClick={onClick} className="w-full">{inner}</button>;
 }
 
-function GrandchildCard({ name, age, badge, tone, quote, onClick }: any) {
+interface GrandchildCardProps {
+  name: string;
+  age: string;
+  badge: string;
+  tone: "jiyun" | "siwoo";
+  quote: string;
+  onClick?: () => void;
+}
+function GrandchildCard({ name, age, badge, tone, quote, onClick }: GrandchildCardProps) {
   const grad = tone === "jiyun"
     ? "linear-gradient(160deg,#FFCDB5,#FFA47A,#E08056)"
     : "linear-gradient(160deg,#D7EBD9,#92BC9E,#6B8B76)";
@@ -261,8 +282,14 @@ function GrandchildCard({ name, age, badge, tone, quote, onClick }: any) {
   );
 }
 
-function Polaroid({ scene, date, caption, rot }: any) {
-  const scenes: any = {
+interface PolaroidProps {
+  scene: "jiyun" | "sunset" | "wedding";
+  date: string;
+  caption: string;
+  rot: number;
+}
+function Polaroid({ scene, date, caption, rot }: PolaroidProps) {
+  const scenes: Record<PolaroidProps["scene"], React.ReactNode> = {
     jiyun: <div className="flex h-full items-end justify-center" style={{ background: "linear-gradient(180deg,#FFE5C2,#FFD0A8)" }}><span className="mb-4 text-6xl drop-shadow">👶</span></div>,
     sunset: <div className="h-full" style={{ background: "radial-gradient(ellipse at 70% 30%,#FFD56B 0%,transparent 50%),linear-gradient(180deg,#FFC09A,#E08056 60%,#7A4838)" }} />,
     wedding: <div className="flex h-full items-center justify-center" style={{ background: "linear-gradient(180deg,#F5E5E8,#E8C5D0)" }}><span className="text-5xl drop-shadow">💐</span></div>,

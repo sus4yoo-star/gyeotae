@@ -1,5 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
+
+type CookieToSet = { name: string; value: string; options: CookieOptions };
 
 /** Refreshes the Supabase session on every request. No-op if env not set. */
 export async function middleware(req: NextRequest) {
@@ -11,7 +13,7 @@ export async function middleware(req: NextRequest) {
   const supabase = createServerClient(url, key, {
     cookies: {
       getAll() { return req.cookies.getAll(); },
-      setAll(toSet) {
+      setAll(toSet: CookieToSet[]) {
         toSet.forEach(({ name, value }) => req.cookies.set(name, value));
         res = NextResponse.next({ request: req });
         toSet.forEach(({ name, value, options }) => res.cookies.set(name, value, options));
