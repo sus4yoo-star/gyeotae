@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { createClient, isSupabaseEnabled } from "@/lib/supabase/client";
-import type { CareCircle } from "@/lib/types";
+import type { CareCircle, CareEvent, CircleMember } from "@/lib/types";
 import type { TakenMap, DoseId } from "@/components/medication-tracker";
 
 /** Returns the current user's first care circle, or null in demo mode. */
@@ -150,4 +150,48 @@ export async function fireSOS(circleId: string | null) {
       }),
     });
   } catch {}
+}
+
+/** Live feed of a circle's recent events. Loads the latest, then subscribes to
+ *  realtime INSERTs. Returns null in demo mode (caller shows demo content). */
+export function useCircleEvents(circleId?: string | null, limit = 20): CareEvent[] | null {
+  const [events, setEvents] = useState<CareEvent[] | null>(null);
+  useEffect(() => {
+    if (!circleId) { setEvents(null); return; }
+    const sb = createClient();
+    if (!sb) { setEvents(null); return; }
+    let live = true;
+    sb.from("care_events").select("*").eq("circle_id", circleId)
+      .order("created_at", { ascending: false }).limit(limit)
+      .then(({ data }) => { if (live) setEvents((data as CareEvent[]) ?? []); });
+    const channel = sb.channel(`care_events:${circleId}`)
+      .on("postgres_changes",
+        { event: "INSERT", schema: "public", table: "care_events", filter: `circle_id=eq.${circleId}` },
+        (payload) => setEvents((cur) => [payload.new as CareEvent, ...(cur ?? [])].slice(0, limit)))
+      .subscribe();
+    return () => { live = false; sb.removeChannel(channel); };
+  }, [circleId, limit]);
+  return events;
+}
+
+/** A circle's members plus the current user's id (to highlight "me"). */
+export function useCircleMembers(circleId?: string | null): { members: CircleMember[]; meId: string | null } {
+  const [members, setMembers] = useState<CircleMember[]>([]);
+  const [meId, setMeId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!circleId) { setMembers([]); setMeId(null); return; }
+    const sb = createClient();
+    if (!sb) return;
+    let live = true;
+    (async () => {
+      const { data: { user } } = await sb.auth.getUser();
+      if (!live) return;
+      setMeId(user?.id ?? null);
+      const { data } = await sb.from("circle_members").select("*")
+        .eq("circle_id", circleId).order("created_at", { ascending: true });
+      if (live) setMembers((data as CircleMember[]) ?? []);
+    })();
+    return () => { live = false; };
+  }, [circleId]);
+  return { members, meId };
 }

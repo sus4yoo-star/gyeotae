@@ -9,10 +9,13 @@ import { PushManager } from "@/components/push-manager";
 import { MedicalCard } from "@/components/medical-card";
 import { MedicationStatusCard } from "@/components/medication-tracker";
 import { Button } from "@/components/ui/button";
-import { useCircleState } from "@/lib/circle";
+import { useCircleState, useCircleEvents, useCircleMembers } from "@/lib/circle";
+import type { CareEvent, CircleMember } from "@/lib/types";
 
 export default function FamilyDashboard() {
   const { circle, status } = useCircleState();
+  const events = useCircleEvents(circle?.id);
+  const { members, meId } = useCircleMembers(circle?.id);
   const [warmth, setWarmth] = useState(67);
   const [toast, setToast] = useState<string | null>(null);
   const [medicalOpen, setMedicalOpen] = useState(false);
@@ -22,6 +25,7 @@ export default function FamilyDashboard() {
   const week = [14, 24, 42, 18, 30, 22, 46];
   const days = ["금", "토", "일", "월", "화", "수", "오늘"];
   const parentName = circle?.parent_name || "이옥자";
+  const myName = members.find((m) => m.user_id === meId)?.display_name || "미경";
 
   // Logged in but not in a circle yet → invite them to set one up.
   if (status === "needs-onboarding") {
@@ -55,7 +59,7 @@ export default function FamilyDashboard() {
             <div className="flex items-start justify-between">
               <div>
                 <p className="mb-1.5 font-display italic text-xs tracking-[0.14em] text-gt-terra">— TODAY · 자녀 화면 —</p>
-                <h1 className="mb-1 font-serif text-3xl text-gt-ink">미경 님, 안녕하세요</h1>
+                <h1 className="mb-1 font-serif text-3xl text-gt-ink">{myName} 님, 안녕하세요</h1>
                 <p className="text-sm text-gt-muted"><strong className="text-gt-coral">{parentName} 어머니</strong>의 곁에를 지키고 있어요</p>
               </div>
               <PushManager circleId={circle?.id} />
@@ -148,17 +152,47 @@ export default function FamilyDashboard() {
             <ActionBtn icon={ShieldPlus} main="의료카드" sub="응급 정보" color="danger" onClick={() => setMedicalOpen(true)} />
           </section>
 
+          {/* 함께하는 가족 (실제 모임 구성원) */}
+          {members.length > 0 && (
+            <section className="mt-5 px-5">
+              <div className="gt-card overflow-hidden">
+                <div className="flex items-center justify-between border-b border-gt-line px-5 py-4">
+                  <span className="font-serif text-base text-gt-ink">함께하는 가족</span>
+                  <span className="rounded-full bg-gt-sageSoft px-2.5 py-1 font-display italic text-xs text-gt-sage">{members.length}명</span>
+                </div>
+                <div className="divide-y divide-gt-line">
+                  {members.map((m) => <MemberRow key={m.id} m={m} isMe={m.user_id === meId} />)}
+                </div>
+              </div>
+            </section>
+          )}
+
           {/* Activity feed */}
           <section className="mt-5 px-5">
             <div className="gt-card overflow-hidden">
               <div className="flex items-center justify-between border-b border-gt-line px-5 py-4">
                 <span className="font-serif text-base text-gt-ink">실시간 활동</span>
-                <span className="rounded-full bg-gt-coralSoft px-2.5 py-1 font-display italic text-xs text-gt-coral">3건</span>
+                <span className="rounded-full bg-gt-coralSoft px-2.5 py-1 font-display italic text-xs text-gt-coral">
+                  {events === null ? "3건" : `${events.length}건`}
+                </span>
               </div>
               <div className="divide-y divide-gt-line">
-                <FeedItem emoji="🎙️" text={<>어머니가 <strong className="text-gt-coral">&quot;첫 직장 이야기&quot;</strong>를 음성으로 기록하셨어요 (3분 12초)</>} time="8분 전" />
-                <FeedItem emoji="🎬" text={<>어머니가 손녀 <strong className="text-gt-coral">지윤이의 영상</strong>을 보셨어요</>} time="35분 전" />
-                <FeedItem emoji="✓" text={<>AI 모닝콜에 응답 — <strong className="text-gt-coral">&quot;잘 잤어요, 오늘 비온대&quot;</strong></>} time="today, 7:31 AM" />
+                {events === null ? (
+                  <>
+                    <FeedItem emoji="🎙️" text={<>어머니가 <strong className="text-gt-coral">&quot;첫 직장 이야기&quot;</strong>를 음성으로 기록하셨어요 (3분 12초)</>} time="8분 전" />
+                    <FeedItem emoji="🎬" text={<>어머니가 손녀 <strong className="text-gt-coral">지윤이의 영상</strong>을 보셨어요</>} time="35분 전" />
+                    <FeedItem emoji="✓" text={<>AI 모닝콜에 응답 — <strong className="text-gt-coral">&quot;잘 잤어요, 오늘 비온대&quot;</strong></>} time="today, 7:31 AM" />
+                  </>
+                ) : events.length === 0 ? (
+                  <p className="px-5 py-8 text-center text-sm leading-relaxed text-gt-muted">
+                    아직 활동이 없어요.<br />부모님이 SOS를 누르거나 약을 체크하면 여기에 바로 나타나요.
+                  </p>
+                ) : (
+                  events.map((e) => {
+                    const d = eventDisplay(e);
+                    return <FeedItem key={e.id} emoji={d.emoji} text={d.text} time={relativeTime(e.created_at)} />;
+                  })
+                )}
               </div>
             </div>
           </section>
@@ -174,6 +208,45 @@ export default function FamilyDashboard() {
         <div className="fixed left-1/2 top-4 z-[60] -translate-x-1/2 animate-rise rounded-2xl bg-gt-ink px-5 py-3.5 text-sm text-white shadow-2xl">{toast}</div>
       )}
     </>
+  );
+}
+
+const EVENT_EMOJI: Record<string, string> = {
+  sos: "🚨", med: "💊", checkin: "✓", silence: "🔕", memoir: "🎙️", message: "💬", video: "🎬",
+};
+function eventDisplay(e: CareEvent): { emoji: string; text: React.ReactNode } {
+  return { emoji: EVENT_EMOJI[e.type] || "💛", text: e.message || "활동이 기록되었어요" };
+}
+
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return "방금";
+  if (min < 60) return `${min}분 전`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}시간 전`;
+  const day = Math.floor(hr / 24);
+  if (day < 7) return `${day}일 전`;
+  return new Date(iso).toLocaleDateString("ko-KR", { month: "long", day: "numeric" });
+}
+
+function MemberRow({ m, isMe }: { m: CircleMember; isMe: boolean }) {
+  const name = m.display_name || "가족";
+  return (
+    <div className="flex items-center gap-3 px-5 py-3">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-gt-coral to-gt-gold font-serif text-sm font-bold text-white">
+        {name.slice(0, 1)}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[14px] font-semibold text-gt-ink">
+          {name}{isMe && <span className="ml-1 text-[11px] font-normal text-gt-muted">(나)</span>}
+        </p>
+        <p className="text-[11px] text-gt-muted">{m.relation || "가족"}</p>
+      </div>
+      {m.role === "admin" && (
+        <span className="rounded-full bg-gt-coralSoft px-2 py-0.5 text-[10px] font-semibold text-gt-coral">관리자</span>
+      )}
+    </div>
   );
 }
 
