@@ -187,4 +187,13 @@ create trigger on_auth_user_created
   for each row execute function public.handle_new_user();
 
 -- 실시간 활성화 (자녀 화면이 이벤트를 실시간 수신)
-alter publication supabase_realtime add table public.care_events;
+-- 재실행해도 안전하도록 이미 등록돼 있으면 건너뜁니다.
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'care_events'
+  ) then
+    alter publication supabase_realtime add table public.care_events;
+  end if;
+end $$;
