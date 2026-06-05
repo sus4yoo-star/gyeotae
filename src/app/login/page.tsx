@@ -8,18 +8,6 @@ import { Button } from "@/components/ui/button";
 import { AmovFooter } from "@/components/amov-footer";
 import { createClient, isSupabaseEnabled } from "@/lib/supabase/client";
 
-/** Polls getSession() until cookies are actually readable. Prevents the
- *  classic "have to log in twice" race after password/OTP exchange. */
-async function waitForSession(supabase: any, timeoutMs = 1500) {
-  const start = Date.now();
-  while (Date.now() - start < timeoutMs) {
-    const { data } = await supabase.auth.getSession();
-    if (data?.session) return true;
-    await new Promise((r) => setTimeout(r, 50));
-  }
-  return false;
-}
-
 function LoginInner() {
   const params = useSearchParams();
   const next = params.get("next") || "/home";

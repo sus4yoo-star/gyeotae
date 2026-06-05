@@ -43,14 +43,14 @@ export default function CallPage() {
   async function aiReply() {
     setTyping(true);
     let reply = await callApi({ messages: convo.current });
-    if (reply === null) {
+    if (!reply) {
       await new Promise((r) => setTimeout(r, 850));
       reply = SIM[Math.min(simStep.current, SIM.length - 1)];
       simStep.current++;
     }
     setTyping(false);
     convo.current = [...convo.current, { role: "assistant", content: reply }];
-    setMsgs((m) => [...m, { role: "assistant", content: reply! }]);
+    setMsgs((m) => [...m, { role: "assistant", content: reply }]);
   }
 
   async function start() {

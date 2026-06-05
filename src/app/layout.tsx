@@ -38,8 +38,10 @@ export const viewport: Viewport = {
   themeColor: "#FAF6EE",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  // Seniors are the primary users — never block pinch-zoom. Locking the scale
+  // is a WCAG 1.4.4 failure and fights the app's own large-text feature.
+  maximumScale: 5,
+  userScalable: true,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

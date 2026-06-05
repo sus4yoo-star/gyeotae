@@ -99,6 +99,13 @@ VAPID_SUBJECT=mailto:hello@amov.app
 
 > 새 키를 만들고 싶으면 터미널에서 `npm run gen:vapid` 실행 → 나온 두 줄을 넣으세요.
 
+> **중요 — 가족 전체 알림을 켜려면 `SUPABASE_SERVICE_ROLE_KEY`도 넣어주세요.**
+> SOS는 가족 *모두*의 푸시 구독을 읽어야 하는데, 일반 `anon` 키는 RLS 때문에
+> 본인 구독만 보입니다. Supabase 대시보드 → Settings → API → `service_role` 키를
+> **서버 환경변수**(`SUPABASE_SERVICE_ROLE_KEY`)에 넣으세요. 이 키는 절대
+> `NEXT_PUBLIC_` 접두사를 붙이거나 브라우저에 노출하면 안 됩니다. 넣지 않으면
+> SOS 푸시는 누른 사람 본인 기기에만 갑니다.
+
 작동 방식: 가족이 자녀 화면 우측 상단 **"알림 켜기"** → 부모님이 SOS 누르면 가족 모두에게 푸시.
 
 ---
@@ -119,6 +126,7 @@ VAPID_SUBJECT=mailto:hello@amov.app
    - `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
    - `VAPID_PRIVATE_KEY`
    - `VAPID_SUBJECT`
+   - `SUPABASE_SERVICE_ROLE_KEY` (가족 전체 SOS 알림에 필요)
    - `ANTHROPIC_API_KEY` (선택)
 4. **Deploys → Trigger deploy** 한 번 더 (환경변수는 재배포해야 적용).
 5. 1-B 의 Redirect URLs 와 카카오 Redirect URI 에 **최종 도메인을 빠짐없이** 추가했는지 확인.

@@ -18,6 +18,8 @@ export function InstallPrompt() {
       window.matchMedia("(display-mode: standalone)").matches ||
       (window.navigator as any).standalone === true;
     if (standalone) return;
+    // Respect a previous dismissal so we don't nag on every page load.
+    try { if (localStorage.getItem("gt-install-dismissed")) return; } catch {}
 
     const ios = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
     setIsIOS(ios);
@@ -41,13 +43,18 @@ export function InstallPrompt() {
 
   if (!show) return null;
 
+  const dismiss = () => {
+    setShow(false);
+    try { localStorage.setItem("gt-install-dismissed", "1"); } catch {}
+  };
+
   const install = async () => {
     if (deferred) {
       deferred.prompt();
       await deferred.userChoice;
       setDeferred(null);
     }
-    setShow(false);
+    dismiss();
   };
 
   return (
@@ -77,7 +84,7 @@ export function InstallPrompt() {
             </button>
           )}
         </div>
-        <button onClick={() => setShow(false)} className="shrink-0 text-gt-mutedLight" aria-label="닫기">
+        <button onClick={dismiss} className="shrink-0 text-gt-mutedLight" aria-label="닫기">
           <X className="h-5 w-5" />
         </button>
       </div>
