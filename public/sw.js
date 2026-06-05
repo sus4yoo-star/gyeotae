@@ -1,5 +1,5 @@
-/* 곁에 service worker v2 — shell cache + push notifications */
-const CACHE = "gyeotae-shell-v2";
+/* 곁에 service worker v3 — shell cache + push notifications */
+const CACHE = "gyeotae-shell-v3";
 const PRECACHE = ["/", "/home"];
 const PWA_CRITICAL = /^\/(sw\.js|manifest\.json|icon-\d+\.png|apple-touch-icon\.png|favicon\.png|og-image\.png)$/;
 
@@ -21,7 +21,11 @@ self.addEventListener("fetch", (e) => {
     return;
   }
   e.respondWith(caches.match(e.request).then((cached) => {
-    const net = fetch(e.request).then((res) => { caches.open(CACHE).then((c) => c.put(e.request, res.clone())); return res; }).catch(() => cached);
+    const net = fetch(e.request).then((res) => {
+      // Only cache real successes — never persist a 404/500 for an asset.
+      if (res.ok && res.type === "basic") caches.open(CACHE).then((c) => c.put(e.request, res.clone()));
+      return res;
+    }).catch(() => cached);
     return cached || net;
   }));
 });

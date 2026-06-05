@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Check, Sun, Sunrise, Moon } from "lucide-react";
-import { logEvent } from "@/lib/circle";
+import { logEvent, readMedsRemote, writeMedRemote } from "@/lib/circle";
 
 export type DoseId = "morning" | "lunch" | "evening";
 interface Dose { id: DoseId; label: string; short: string; meds: string; when: string; Icon: any; }
@@ -29,12 +29,18 @@ export function readTakenToday(): TakenMap {
   return { ...EMPTY };
 }
 
-/** 부모님 화면: 누르면 복약 기록 (localStorage 저장, 날짜별). */
-export function MedicationTracker({ onToast }: { onToast?: (m: string) => void }) {
+/** 부모님 화면: 누르면 복약 기록. circle이 있으면 DB에 동기화(자녀 화면과 공유),
+ *  없으면 localStorage에만 저장(둘러보기 모드). */
+export function MedicationTracker({ onToast, circleId }: { onToast?: (m: string) => void; circleId?: string | null }) {
   const [taken, setTaken] = useState<TakenMap>(EMPTY);
   const [loaded, setLoaded] = useState(false);
 
-  useEffect(() => { setTaken(readTakenToday()); setLoaded(true); }, []);
+  useEffect(() => {
+    setTaken(readTakenToday());
+    setLoaded(true);
+    // When connected to a circle, the DB is the source of truth across devices.
+    if (circleId) readMedsRemote(circleId).then((remote) => { if (remote) setTaken(remote); }).catch(() => {});
+  }, [circleId]);
 
   const persist = (next: TakenMap) => {
     setTaken(next);
@@ -45,13 +51,15 @@ export function MedicationTracker({ onToast }: { onToast?: (m: string) => void }
     if (taken[dose.id]) {
       persist({ ...taken, [dose.id]: null });
       onToast?.(`${dose.label} 기록을 취소했어요`);
+      if (circleId) writeMedRemote(circleId, dose.id, null).catch(() => {});
       return;
     }
     const now = new Date();
     const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
     persist({ ...taken, [dose.id]: time });
     onToast?.(`✓ ${dose.label}을 드셨어요 (${time})`);
-    logEvent(null, "med", `어머니가 ${dose.label}을 드셨어요`).catch(() => {});
+    if (circleId) writeMedRemote(circleId, dose.id, time).catch(() => {});
+    logEvent(circleId ?? null, "med", `어머니가 ${dose.label}을 드셨어요`).catch(() => {});
   };
 
   const doneCount = Object.values(taken).filter(Boolean).length;
@@ -103,18 +111,23 @@ export function MedicationTracker({ onToast }: { onToast?: (m: string) => void }
   );
 }
 
-/** 자녀 화면: 부모님이 오늘 아침/점심/저녁 약을 드셨는지 읽기 전용 표시. */
-export function MedicationStatusCard() {
+/** 자녀 화면: 부모님이 오늘 아침/점심/저녁 약을 드셨는지 읽기 전용 표시.
+ *  circle이 있으면 DB를 폴링해 부모님 기기와 동기화한다. */
+export function MedicationStatusCard({ circleId }: { circleId?: string | null }) {
   const [taken, setTaken] = useState<TakenMap>(EMPTY);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    setTaken(readTakenToday()); setLoaded(true);
-    const onStorage = () => setTaken(readTakenToday());
+    const refresh = () => {
+      if (circleId) readMedsRemote(circleId).then((remote) => { if (remote) setTaken(remote); }).catch(() => {});
+      else setTaken(readTakenToday());
+    };
+    refresh(); setLoaded(true);
+    const onStorage = () => { if (!circleId) setTaken(readTakenToday()); };
     window.addEventListener("storage", onStorage);
-    const i = setInterval(() => setTaken(readTakenToday()), 5000);
+    const i = setInterval(refresh, 5000);
     return () => { window.removeEventListener("storage", onStorage); clearInterval(i); };
-  }, []);
+  }, [circleId]);
 
   const doneCount = Object.values(taken).filter(Boolean).length;
   const allDone = doneCount === DOSES.length;

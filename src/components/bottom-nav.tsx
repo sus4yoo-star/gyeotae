@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Home, HeartHandshake, Phone, Type } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { useParentMode } from "@/lib/device";
 
 const tabs = [
   { href: "/home", label: "부모님", icon: Home },
@@ -35,10 +36,13 @@ function FontSizeButton() {
 
 export function BottomNav() {
   const path = usePathname();
+  const [parentMode] = useParentMode();
+  // Parent-device mode hides the children's dashboard tab.
+  const visibleTabs = parentMode ? tabs.filter((t) => t.href !== "/family") : tabs;
   return (
     <nav className="sticky bottom-0 z-40 mx-auto w-full max-w-md border-t border-gt-line bg-gt-cream/90 backdrop-blur-md">
       <div className="flex items-stretch px-2 pb-[max(8px,env(safe-area-inset-bottom))] pt-1">
-        {tabs.map((t) => {
+        {visibleTabs.map((t) => {
           const active = path === t.href;
           const Icon = t.icon;
           return (

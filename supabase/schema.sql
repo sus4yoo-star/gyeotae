@@ -53,6 +53,17 @@ create table if not exists public.push_subscriptions (
   created_at timestamptz default now()
 );
 
+-- 6) 복약 기록 (부모님↔자녀 기기 간 동기화용, 날짜·복용시간대별 1행)
+create table if not exists public.med_logs (
+  circle_id uuid not null references public.care_circles(id) on delete cascade,
+  log_date date not null,
+  dose text not null,                    -- morning|lunch|evening
+  taken_at text,                         -- "HH:MM" (복용함) 또는 null (미복용)
+  updated_by uuid references auth.users(id) on delete set null,
+  updated_at timestamptz default now(),
+  primary key (circle_id, log_date, dose)
+);
+
 -- ============================================================
 -- 헬퍼: 현재 사용자가 특정 모임의 구성원인지
 -- ============================================================
@@ -64,6 +75,38 @@ returns boolean language sql security definer stable as $$
   );
 $$;
 
+-- 헬퍼: 현재 사용자가 특정 모임의 관리자(admin)이거나 모임 소유자인지
+create or replace function public.is_circle_admin(cid uuid)
+returns boolean language sql security definer stable as $$
+  select exists(
+    select 1 from public.circle_members m
+    where m.circle_id = cid and m.user_id = auth.uid() and m.role = 'admin'
+  ) or exists(
+    select 1 from public.care_circles c
+    where c.id = cid and c.owner_id = auth.uid()
+  );
+$$;
+
+-- ============================================================
+-- 초대코드로 모임 합류 (비구성원은 RLS로 모임을 읽을 수 없으므로
+-- security definer 함수로 조회+가입을 안전하게 처리)
+-- ============================================================
+create or replace function public.join_circle(p_code text, p_display_name text default null)
+returns uuid language plpgsql security definer as $$
+declare cid uuid;
+begin
+  if auth.uid() is null then return null; end if;
+  select id into cid from public.care_circles
+    where lower(invite_code) = lower(p_code) limit 1;
+  if cid is null then return null; end if;
+  insert into public.circle_members (circle_id, user_id, relation, role, display_name)
+  values (cid, auth.uid(), '가족', 'member', nullif(p_display_name, ''))
+  on conflict (circle_id, user_id) do nothing;
+  return cid;
+end; $$;
+revoke all on function public.join_circle(text, text) from public, anon;
+grant execute on function public.join_circle(text, text) to authenticated;
+
 -- ============================================================
 -- Row Level Security
 -- ============================================================
@@ -72,6 +115,7 @@ alter table public.care_circles      enable row level security;
 alter table public.circle_members    enable row level security;
 alter table public.care_events       enable row level security;
 alter table public.push_subscriptions enable row level security;
+alter table public.med_logs          enable row level security;
 
 -- profiles: 본인만
 drop policy if exists "own profile" on public.profiles;
@@ -96,6 +140,13 @@ create policy "self join" on public.circle_members
 drop policy if exists "self leave" on public.circle_members;
 create policy "self leave" on public.circle_members
   for delete using (user_id = auth.uid());
+-- 관리자는 같은 모임 구성원의 역할 변경/내보내기 가능
+drop policy if exists "admin updates members" on public.circle_members;
+create policy "admin updates members" on public.circle_members
+  for update using (public.is_circle_admin(circle_id)) with check (public.is_circle_admin(circle_id));
+drop policy if exists "admin removes members" on public.circle_members;
+create policy "admin removes members" on public.circle_members
+  for delete using (public.is_circle_admin(circle_id));
 
 -- care_events: 모임 구성원이면 읽고 쓰기
 drop policy if exists "members read events" on public.care_events;
@@ -109,6 +160,14 @@ create policy "members write events" on public.care_events
 drop policy if exists "own push" on public.push_subscriptions;
 create policy "own push" on public.push_subscriptions
   for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- med_logs: 모임 구성원이면 읽고 쓰기 (부모님↔자녀 동기화)
+drop policy if exists "members read meds" on public.med_logs;
+create policy "members read meds" on public.med_logs
+  for select using (public.is_circle_member(circle_id));
+drop policy if exists "members write meds" on public.med_logs;
+create policy "members write meds" on public.med_logs
+  for all using (public.is_circle_member(circle_id)) with check (public.is_circle_member(circle_id));
 
 -- ============================================================
 -- 가입 시 프로필 자동 생성
@@ -128,4 +187,13 @@ create trigger on_auth_user_created
   for each row execute function public.handle_new_user();
 
 -- 실시간 활성화 (자녀 화면이 이벤트를 실시간 수신)
-alter publication supabase_realtime add table public.care_events;
+-- 재실행해도 안전하도록 이미 등록돼 있으면 건너뜁니다.
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'care_events'
+  ) then
+    alter publication supabase_realtime add table public.care_events;
+  end if;
+end $$;

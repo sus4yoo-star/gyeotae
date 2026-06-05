@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Heart, Mic, Send } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
+import { logEvent, useMyCircle } from "@/lib/circle";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -17,6 +18,7 @@ const SIM = [
 const CHIPS = [["잘 잤어요", "어제 잠을 설쳤네"], ["기분 좋아요", "조금 외롭네"], ["아침 먹었어요", "아직 안 먹었어요"], ["약 먹었어요", "깜빡했네"], ["교회 가요", "집에 있을래요"], []];
 
 export default function CallPage() {
+  const circle = useMyCircle();
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
@@ -29,6 +31,8 @@ export default function CallPage() {
   const scroller = useRef<HTMLDivElement>(null);
 
   useEffect(() => { scroller.current?.scrollTo({ top: 999999, behavior: "smooth" }); }, [msgs, typing]);
+  // Kick off the opening greeting once on mount.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { const t = setTimeout(start, 700); return () => clearTimeout(t); }, []);
 
   async function callApi(payload: any): Promise<string | null> {
@@ -43,14 +47,14 @@ export default function CallPage() {
   async function aiReply() {
     setTyping(true);
     let reply = await callApi({ messages: convo.current });
-    if (reply === null) {
+    if (!reply) {
       await new Promise((r) => setTimeout(r, 850));
       reply = SIM[Math.min(simStep.current, SIM.length - 1)];
       simStep.current++;
     }
     setTyping(false);
     convo.current = [...convo.current, { role: "assistant", content: reply }];
-    setMsgs((m) => [...m, { role: "assistant", content: reply! }]);
+    setMsgs((m) => [...m, { role: "assistant", content: reply }]);
   }
 
   async function start() {
@@ -83,6 +87,8 @@ export default function CallPage() {
     }
     setSummary(result);
     setSummaryLoading(false);
+    // Real mode: record the morning check-in so the family dashboard reflects it.
+    logEvent(circle?.id ?? null, "checkin", `AI 모닝콜 응답 완료 — ${result.mood_label || "안부 확인"}`).catch(() => {});
   }
 
   const chips = CHIPS[Math.min(turn, CHIPS.length - 1)] || [];

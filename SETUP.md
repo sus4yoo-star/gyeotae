@@ -87,6 +87,26 @@
 
 ---
 
+## 1-E. 가족 모임 만들기 (온보딩)
+
+Supabase를 연결하고 로그인하면, **자녀 화면(`/family`)** 에서 아직 모임이 없을 때
+자동으로 모임 설정 화면(`/setup`)으로 안내합니다.
+
+- **부모님 등록** — 부모님 성함·나이·지역을 넣어 새 모임을 만들면, 만든 사람이
+  관리자(admin)가 되고 **6자리 초대코드**가 나옵니다. 이 코드를 다른 가족에게 알려주세요.
+- **초대코드로 합류** — 형제자매가 그 코드를 입력하면 같은 모임의 구성원이 됩니다.
+  (비구성원은 RLS로 모임을 직접 못 읽으므로, 합류는 `join_circle` 보안 정의 함수로
+  안전하게 처리됩니다.)
+
+> 같은 모임이 되면 SOS·복약·식사·모닝콜이 **가족 모두에게** 실시간 공유·동기화되고,
+> 자녀 화면의 활동 피드·상태 카드·구성원 목록에 실제 데이터로 표시됩니다.
+> 관리자(모임을 만든 사람)는 구성원의 **역할 변경/내보내기**도 할 수 있어요.
+> 이 기능들은 `supabase/schema.sql` 의 `med_logs` 테이블, `join_circle`·`is_circle_admin`
+> 함수, 구성원 관리 정책이 있어야 하니, 스키마를 업데이트했다면
+> **SQL Editor 에서 다시 한 번 RUN** 해주세요.
+
+---
+
 ## 2. 푸시 알림(VAPID) 연결 — 실제 SOS 알림
 
 `.env.example` 안에 **이미 생성된 키 한 쌍**이 들어있어요. 그대로 Netlify 환경변수에 넣으면 됩니다:
@@ -98,6 +118,13 @@ VAPID_SUBJECT=mailto:hello@amov.app
 ```
 
 > 새 키를 만들고 싶으면 터미널에서 `npm run gen:vapid` 실행 → 나온 두 줄을 넣으세요.
+
+> **중요 — 가족 전체 알림을 켜려면 `SUPABASE_SERVICE_ROLE_KEY`도 넣어주세요.**
+> SOS는 가족 *모두*의 푸시 구독을 읽어야 하는데, 일반 `anon` 키는 RLS 때문에
+> 본인 구독만 보입니다. Supabase 대시보드 → Settings → API → `service_role` 키를
+> **서버 환경변수**(`SUPABASE_SERVICE_ROLE_KEY`)에 넣으세요. 이 키는 절대
+> `NEXT_PUBLIC_` 접두사를 붙이거나 브라우저에 노출하면 안 됩니다. 넣지 않으면
+> SOS 푸시는 누른 사람 본인 기기에만 갑니다.
 
 작동 방식: 가족이 자녀 화면 우측 상단 **"알림 켜기"** → 부모님이 SOS 누르면 가족 모두에게 푸시.
 
@@ -119,6 +146,7 @@ VAPID_SUBJECT=mailto:hello@amov.app
    - `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
    - `VAPID_PRIVATE_KEY`
    - `VAPID_SUBJECT`
+   - `SUPABASE_SERVICE_ROLE_KEY` (가족 전체 SOS 알림에 필요)
    - `ANTHROPIC_API_KEY` (선택)
 4. **Deploys → Trigger deploy** 한 번 더 (환경변수는 재배포해야 적용).
 5. 1-B 의 Redirect URLs 와 카카오 Redirect URI 에 **최종 도메인을 빠짐없이** 추가했는지 확인.
