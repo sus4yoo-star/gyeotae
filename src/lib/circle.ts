@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useCallback, useEffect, useState } from "react";
+import { createClient, isSupabaseEnabled } from "@/lib/supabase/client";
 import type { CareCircle } from "@/lib/types";
 import type { TakenMap, DoseId } from "@/components/medication-tracker";
 
@@ -25,6 +25,74 @@ export function useMyCircle(): CareCircle | null {
   const [circle, setCircle] = useState<CareCircle | null>(null);
   useEffect(() => { let live = true; getMyCircle().then((c) => { if (live) setCircle(c); }).catch(() => {}); return () => { live = false; }; }, []);
   return circle;
+}
+
+export type CircleStatus = "loading" | "demo" | "needs-onboarding" | "ready";
+
+/** Richer circle state used by the onboarding gate.
+ *  - "demo": Supabase off, or nobody logged in → browse the demo freely.
+ *  - "needs-onboarding": logged in but not in any circle yet.
+ *  - "ready": logged in and a member of a circle. */
+export function useCircleState() {
+  const [circle, setCircle] = useState<CareCircle | null>(null);
+  const [status, setStatus] = useState<CircleStatus>("loading");
+
+  const reload = useCallback(async () => {
+    if (!isSupabaseEnabled()) { setStatus("demo"); return; }
+    const sb = createClient();
+    if (!sb) { setStatus("demo"); return; }
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) { setStatus("demo"); return; }
+    const c = await getMyCircle();
+    if (c) { setCircle(c); setStatus("ready"); }
+    else { setCircle(null); setStatus("needs-onboarding"); }
+  }, []);
+
+  useEffect(() => { reload().catch(() => setStatus("demo")); }, [reload]);
+  return { circle, status, reload };
+}
+
+/** Creates a new care circle for the current user and makes them its admin.
+ *  Returns the circle (with its invite_code) so siblings can be invited. */
+export async function createCircle(input: {
+  parent_name: string; parent_age?: number | null; parent_location?: string | null;
+  display_name?: string; relation?: string;
+}): Promise<CareCircle> {
+  const sb = createClient();
+  if (!sb) throw new Error("로그인이 필요해요");
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) throw new Error("로그인이 필요해요");
+
+  const { data: circle, error } = await sb.from("care_circles").insert({
+    parent_name: input.parent_name,
+    parent_age: input.parent_age ?? null,
+    parent_location: input.parent_location ?? null,
+    owner_id: user.id,
+  }).select("*").single();
+  if (error || !circle) throw new Error(error?.message || "모임을 만들지 못했어요");
+
+  await sb.from("circle_members").insert({
+    circle_id: circle.id, user_id: user.id,
+    relation: input.relation || "가족", role: "admin",
+    display_name: input.display_name || user.email?.split("@")[0] || "가족",
+  });
+  return circle as CareCircle;
+}
+
+/** Joins an existing circle by its 6-char invite code via a security-definer
+ *  RPC (a non-member can't read the circle under RLS otherwise). */
+export async function joinCircle(code: string, displayName?: string): Promise<CareCircle> {
+  const sb = createClient();
+  if (!sb) throw new Error("로그인이 필요해요");
+  const { data: cid, error } = await sb.rpc("join_circle", {
+    p_code: code.trim().toLowerCase(),
+    p_display_name: displayName?.trim() || null,
+  });
+  if (error) throw new Error(error.message);
+  if (!cid) throw new Error("초대코드를 찾을 수 없어요. 다시 확인해주세요.");
+  const { data: circle } = await sb.from("care_circles").select("*").eq("id", cid as string).maybeSingle();
+  if (!circle) throw new Error("모임 정보를 불러오지 못했어요");
+  return circle as CareCircle;
 }
 
 /** Logs an event to the circle (no-op in demo mode). */

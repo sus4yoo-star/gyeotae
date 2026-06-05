@@ -1,16 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Mic, Video, Send, ShieldPlus, CheckCircle2, Circle } from "lucide-react";
+import Link from "next/link";
+import { Mic, Video, Send, ShieldPlus, CheckCircle2, Circle, Heart, UserPlus, ArrowRight } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { PushManager } from "@/components/push-manager";
 import { MedicalCard } from "@/components/medical-card";
 import { MedicationStatusCard } from "@/components/medication-tracker";
-import { useMyCircle } from "@/lib/circle";
+import { Button } from "@/components/ui/button";
+import { useCircleState } from "@/lib/circle";
 
 export default function FamilyDashboard() {
-  const circle = useMyCircle();
+  const { circle, status } = useCircleState();
   const [warmth, setWarmth] = useState(67);
   const [toast, setToast] = useState<string | null>(null);
   const [medicalOpen, setMedicalOpen] = useState(false);
@@ -19,6 +21,30 @@ export default function FamilyDashboard() {
 
   const week = [14, 24, 42, 18, 30, 22, 46];
   const days = ["금", "토", "일", "월", "화", "수", "오늘"];
+  const parentName = circle?.parent_name || "이옥자";
+
+  // Logged in but not in a circle yet → invite them to set one up.
+  if (status === "needs-onboarding") {
+    return (
+      <>
+        <main className="gt-aurora relative flex flex-1 flex-col items-center justify-center px-6 py-10 text-center">
+          <div className="relative z-10 w-full max-w-sm animate-rise">
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-gt-coral to-gt-gold shadow-lg shadow-gt-coral/30">
+              <Heart className="h-8 w-8 text-white" fill="white" />
+            </div>
+            <h1 className="font-serif text-2xl font-bold text-gt-ink">아직 함께하는 모임이 없어요</h1>
+            <p className="mt-2.5 text-[15px] leading-relaxed text-gt-muted">
+              부모님을 등록해 새 모임을 만들거나,<br />가족에게 받은 초대코드로 합류하세요.
+            </p>
+            <Button asChild variant="coral" className="mt-6 w-full">
+              <Link href="/setup"><UserPlus className="h-4 w-4" /> 가족 모임 시작하기 <ArrowRight className="h-4 w-4" /></Link>
+            </Button>
+          </div>
+        </main>
+        <BottomNav />
+      </>
+    );
+  }
 
   return (
     <>
@@ -30,10 +56,11 @@ export default function FamilyDashboard() {
               <div>
                 <p className="mb-1.5 font-display italic text-xs tracking-[0.14em] text-gt-terra">— TODAY · 자녀 화면 —</p>
                 <h1 className="mb-1 font-serif text-3xl text-gt-ink">미경 님, 안녕하세요</h1>
-                <p className="text-sm text-gt-muted"><strong className="text-gt-coral">이옥자 어머니</strong>의 곁에를 지키고 있어요</p>
+                <p className="text-sm text-gt-muted"><strong className="text-gt-coral">{parentName} 어머니</strong>의 곁에를 지키고 있어요</p>
               </div>
               <PushManager circleId={circle?.id} />
             </div>
+            {circle && <InviteChip code={circle.invite_code} onCopied={() => showToast("📋 초대코드를 복사했어요")} />}
           </header>
 
           {/* 온기 점수 HERO */}
@@ -147,6 +174,18 @@ export default function FamilyDashboard() {
         <div className="fixed left-1/2 top-4 z-[60] -translate-x-1/2 animate-rise rounded-2xl bg-gt-ink px-5 py-3.5 text-sm text-white shadow-2xl">{toast}</div>
       )}
     </>
+  );
+}
+
+function InviteChip({ code, onCopied }: { code: string; onCopied: () => void }) {
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(code); onCopied(); } catch {}
+  };
+  return (
+    <button onClick={copy} className="mt-3 flex items-center gap-2 rounded-full border border-gt-coral/30 bg-gt-coralSoft px-3 py-1.5 text-xs text-gt-coralDeep">
+      <UserPlus className="h-3.5 w-3.5" />
+      가족 초대코드 <strong className="font-display tracking-[0.15em]">{code.toUpperCase()}</strong>
+    </button>
   );
 }
 

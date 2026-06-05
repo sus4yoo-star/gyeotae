@@ -76,6 +76,26 @@ returns boolean language sql security definer stable as $$
 $$;
 
 -- ============================================================
+-- 초대코드로 모임 합류 (비구성원은 RLS로 모임을 읽을 수 없으므로
+-- security definer 함수로 조회+가입을 안전하게 처리)
+-- ============================================================
+create or replace function public.join_circle(p_code text, p_display_name text default null)
+returns uuid language plpgsql security definer as $$
+declare cid uuid;
+begin
+  if auth.uid() is null then return null; end if;
+  select id into cid from public.care_circles
+    where lower(invite_code) = lower(p_code) limit 1;
+  if cid is null then return null; end if;
+  insert into public.circle_members (circle_id, user_id, relation, role, display_name)
+  values (cid, auth.uid(), '가족', 'member', nullif(p_display_name, ''))
+  on conflict (circle_id, user_id) do nothing;
+  return cid;
+end; $$;
+revoke all on function public.join_circle(text, text) from public, anon;
+grant execute on function public.join_circle(text, text) to authenticated;
+
+-- ============================================================
 -- Row Level Security
 -- ============================================================
 alter table public.profiles          enable row level security;
