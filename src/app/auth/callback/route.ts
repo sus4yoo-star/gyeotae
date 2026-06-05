@@ -16,7 +16,7 @@ type CookieToSet = { name: string; value: string; options: CookieOptions };
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/home";
+  const next = searchParams.get("next") ?? "/family";
 
   if (code) {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";

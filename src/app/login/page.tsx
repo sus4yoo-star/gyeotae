@@ -10,7 +10,7 @@ import { createClient, isSupabaseEnabled } from "@/lib/supabase/client";
 
 function LoginInner() {
   const params = useSearchParams();
-  const next = params.get("next") || "/home";
+  const next = params.get("next") || "/family";
   const errorParam = params.get("error");
 
   const [email, setEmail] = useState("");
