@@ -133,23 +133,25 @@ export function MedicalCard({ open, onClose, circleId, parentName, parentAge }: 
                 </div>
                 <div className="flex items-center gap-2 rounded-xl bg-white/95 px-3 py-1.5">
                   <Droplet className="h-4 w-4" style={{ color: "#CC3A3A" }} fill="#CC3A3A" />
-                  {editing
-                    ? <input value={draft.blood_type} onChange={(e) => upd("blood_type", e.target.value)} placeholder="혈액형" className="w-20 rounded bg-gt-cream px-1.5 py-0.5 font-serif text-base font-bold text-gt-danger outline-none" />
-                    : <span className="font-serif text-lg font-bold text-gt-danger">{info.blood_type || "—"}</span>}
+                  <span className="font-serif text-lg font-bold text-gt-danger">{(editing ? draft.blood_type : info.blood_type) || "—"}</span>
                 </div>
               </div>
 
-              {editing && (
+              {editing && (<>
                 <div className="grid grid-cols-2 gap-px bg-gt-line">
-                  <EditCell label="성별"><input value={draft.sex} onChange={(e) => upd("sex", e.target.value)} className={inputCls} /></EditCell>
-                  <EditCell label="키/몸무게">
+                  <EditCell label="성별"><SegButtons options={["남", "여"]} value={draft.sex} onChange={(v) => upd("sex", v)} /></EditCell>
+                  <EditCell label="키 / 몸무게">
                     <div className="flex gap-1">
                       <input value={draft.height_cm ?? ""} onChange={(e) => upd("height_cm", e.target.value ? Number(e.target.value) : null)} placeholder="cm" className={inputCls} />
                       <input value={draft.weight_kg ?? ""} onChange={(e) => upd("weight_kg", e.target.value ? Number(e.target.value) : null)} placeholder="kg" className={inputCls} />
                     </div>
                   </EditCell>
                 </div>
-              )}
+                <div className="border-t border-gt-line bg-white p-3">
+                  <p className="mb-1.5 font-display text-[11px] font-semibold tracking-wide text-gt-muted">혈액형</p>
+                  <BloodSelector value={draft.blood_type} onChange={(v) => upd("blood_type", v)} />
+                </div>
+              </>)}
 
               {/* allergies — highlighted */}
               <Field Icon={TriangleAlert} label="알레르기" tint="#C4843A" highlight
@@ -272,6 +274,40 @@ function EditCell({ label, children }: { label: string; children: React.ReactNod
     <div className="bg-white p-3">
       <p className="mb-1 font-display text-[11px] font-semibold tracking-wide text-gt-muted">{label}</p>
       {children}
+    </div>
+  );
+}
+
+const segCls = (active: boolean) =>
+  `flex-1 rounded-lg py-1.5 text-[13px] font-semibold transition-colors ${active ? "bg-gt-coral text-white" : "bg-gt-paper2 text-gt-ink"}`;
+
+function SegButtons({ options, value, onChange }: { options: string[]; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="flex gap-1.5">
+      {options.map((o) => (
+        <button key={o} type="button" onClick={() => onChange(value === o ? "" : o)} className={segCls(value === o)}>{o}</button>
+      ))}
+    </div>
+  );
+}
+
+const BLOOD_ABO = ["A형", "B형", "O형", "AB형"];
+function BloodSelector({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const abo = BLOOD_ABO.find((b) => value.startsWith(b)) || "";
+  const rh = value.includes("Rh-") ? "Rh-" : value.includes("Rh+") ? "Rh+" : "";
+  const set = (a: string, r: string) => onChange(`${a}${a && r ? " " : ""}${r}`.trim());
+  return (
+    <div className="space-y-1.5">
+      <div className="grid grid-cols-4 gap-1.5">
+        {BLOOD_ABO.map((b) => (
+          <button key={b} type="button" onClick={() => set(abo === b ? "" : b, rh)} className={segCls(abo === b)}>{b}</button>
+        ))}
+      </div>
+      <div className="flex gap-1.5">
+        {["Rh+", "Rh-"].map((r) => (
+          <button key={r} type="button" onClick={() => set(abo, rh === r ? "" : r)} className={segCls(rh === r)}>{r}</button>
+        ))}
+      </div>
     </div>
   );
 }
