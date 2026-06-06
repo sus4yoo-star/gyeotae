@@ -102,6 +102,14 @@ export async function signOut() {
   window.location.href = "/login";
 }
 
+/** Updates circle settings (owner only, enforced by RLS). */
+export async function updateCircleSettings(circleId: string, patch: Record<string, unknown>) {
+  const sb = createClient();
+  if (!sb) return;
+  const { error } = await sb.from("care_circles").update(patch).eq("id", circleId);
+  if (error) throw new Error(error.message);
+}
+
 /** Logs an event to the circle (no-op in demo mode). */
 export async function logEvent(circleId: string | null, type: string, message: string) {
   const sb = createClient();

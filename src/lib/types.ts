@@ -11,6 +11,10 @@ export interface CareCircle {
   invite_code: string;
   owner_id: string;
   created_at: string;
+  silence_threshold_hours?: number | null;
+  quiet_start?: string | null;
+  quiet_end?: string | null;
+  last_activity_at?: string | null;
 }
 export interface CircleMember {
   id: string;
