@@ -214,7 +214,7 @@ export default function ParentHome() {
       <BottomNav />
 
       {/* 응급 의료 정보 카드 */}
-      <MedicalCard open={medicalOpen} onClose={() => setMedicalOpen(false)} />
+      <MedicalCard open={medicalOpen} onClose={() => setMedicalOpen(false)} circleId={circle?.id ?? null} parentName={circle?.parent_name} parentAge={circle?.parent_age} />
 
       {/* SOS Modal */}
       {sosOpen && (

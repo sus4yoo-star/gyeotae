@@ -304,7 +304,7 @@ export default function FamilyDashboard() {
       <BottomNav />
 
       {/* 응급 의료 정보 카드 */}
-      <MedicalCard open={medicalOpen} onClose={() => setMedicalOpen(false)} />
+      <MedicalCard open={medicalOpen} onClose={() => setMedicalOpen(false)} circleId={circle?.id ?? null} parentName={circle?.parent_name} parentAge={circle?.parent_age} />
 
       {toast && (
         <div className="fixed left-1/2 top-4 z-[60] -translate-x-1/2 animate-rise rounded-2xl bg-gt-ink px-5 py-3.5 text-sm text-white shadow-2xl">{toast}</div>
