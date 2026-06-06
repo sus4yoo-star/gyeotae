@@ -95,6 +95,13 @@ export async function joinCircle(code: string, displayName?: string): Promise<Ca
   return circle as CareCircle;
 }
 
+/** Signs the current user out and returns them to the login screen. */
+export async function signOut() {
+  const sb = createClient();
+  if (sb) { try { await sb.auth.signOut(); } catch {} }
+  window.location.href = "/login";
+}
+
 /** Logs an event to the circle (no-op in demo mode). */
 export async function logEvent(circleId: string | null, type: string, message: string) {
   const sb = createClient();
