@@ -4,6 +4,7 @@ import { ServiceWorker } from "@/components/service-worker";
 import { InstallPrompt } from "@/components/install-prompt";
 import { Splash } from "@/components/splash";
 import { CanonicalHost } from "@/components/canonical-host";
+import { CallManager } from "@/components/call-manager";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://gyeotae.netlify.app"),
@@ -57,6 +58,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
         </div>
         <InstallPrompt />
+        <CallManager />
       </body>
     </html>
   );
