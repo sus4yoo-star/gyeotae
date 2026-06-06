@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Mic, Video, Send, ShieldPlus, CheckCircle2, Circle, Heart, UserPlus, UserMinus, Shield, ArrowRight, Smartphone, LogOut } from "lucide-react";
+import { Mic, Video, Send, ShieldPlus, CheckCircle2, Circle, Heart, UserPlus, UserMinus, Shield, ArrowRight, Smartphone, LogOut, Loader2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { PushManager } from "@/components/push-manager";
@@ -43,17 +43,19 @@ export default function FamilyDashboard() {
   };
   const bump = (n: number) => { if (!liveWarmth) setWarmth((w) => Math.min(100, w + n)); showToast(`💛 온기 점수가 +${n} 올랐어요`); };
 
+  const demoMode = status === "demo";
   const demoWeek = [14, 24, 42, 18, 30, 22, 46];
   const demoDays = ["금", "토", "일", "월", "화", "수", "오늘"];
-  const parentName = circle?.parent_name || "이옥자";
-  const myName = members.find((m) => m.user_id === meId)?.display_name || "미경";
+  const parentName = circle?.parent_name || (demoMode ? "이옥자" : "가족");
+  const myName = members.find((m) => m.user_id === meId)?.display_name || (demoMode ? "미경" : "가족");
   const iAmAdmin = !!circle && (members.find((m) => m.user_id === meId)?.role === "admin" || circle.owner_id === meId);
-  const ps = parentStatus(events, circle);
+  const ps = parentStatus(demoMode ? null : (events ?? []), circle);
 
-  // Real warmth from this week's activity (null in demo mode → keep demo card).
+  // Real warmth from this week's activity. Demo mode keeps the demo card;
+  // logged in (even before events load) shows real numbers — never the demo flash.
   const liveWarmth = useMemo(
-    () => (events ? warmthFrom(events, members, myName) : null),
-    [events, members, myName],
+    () => (demoMode ? null : warmthFrom(events ?? [], members, myName)),
+    [demoMode, events, members, myName],
   );
   const warmthScore = liveWarmth ? liveWarmth.score : warmth;
   const statRows: [string, string][] = liveWarmth
@@ -62,6 +64,18 @@ export default function FamilyDashboard() {
   const bars = liveWarmth
     ? liveWarmth.bars
     : demoWeek.map((h, i) => ({ h, label: demoDays[i], today: i === demoWeek.length - 1 }));
+
+  // Still checking auth → blank loader, so demo placeholders never flash.
+  if (status === "loading") {
+    return (
+      <>
+        <main className="gt-aurora relative flex flex-1 items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-gt-coral" />
+        </main>
+        <BottomNav />
+      </>
+    );
+  }
 
   // Logged in but not in a circle yet → invite them to set one up.
   if (status === "needs-onboarding") {
