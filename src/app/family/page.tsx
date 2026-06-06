@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Mic, Video, Send, ShieldPlus, CheckCircle2, Circle, Heart, UserPlus, UserMinus, Shield, ArrowRight, Smartphone, LogOut } from "lucide-react";
@@ -41,14 +41,27 @@ export default function FamilyDashboard() {
     try { await removeMember(m.id); showToast(`${m.display_name || "가족"} 님을 내보냈어요`); reload(); }
     catch { showToast("내보내기에 실패했어요"); }
   };
-  const bump = (n: number) => { setWarmth((w) => Math.min(100, w + n)); showToast(`💛 온기 점수가 +${n} 올랐어요`); };
+  const bump = (n: number) => { if (!liveWarmth) setWarmth((w) => Math.min(100, w + n)); showToast(`💛 온기 점수가 +${n} 올랐어요`); };
 
-  const week = [14, 24, 42, 18, 30, 22, 46];
-  const days = ["금", "토", "일", "월", "화", "수", "오늘"];
+  const demoWeek = [14, 24, 42, 18, 30, 22, 46];
+  const demoDays = ["금", "토", "일", "월", "화", "수", "오늘"];
   const parentName = circle?.parent_name || "이옥자";
   const myName = members.find((m) => m.user_id === meId)?.display_name || "미경";
   const iAmAdmin = !!circle && (members.find((m) => m.user_id === meId)?.role === "admin" || circle.owner_id === meId);
   const ps = parentStatus(events, circle);
+
+  // Real warmth from this week's activity (null in demo mode → keep demo card).
+  const liveWarmth = useMemo(
+    () => (events ? warmthFrom(events, members, myName) : null),
+    [events, members, myName],
+  );
+  const warmthScore = liveWarmth ? liveWarmth.score : warmth;
+  const statRows: [string, string][] = liveWarmth
+    ? liveWarmth.stats
+    : [["3", "개의 메시지"], ["1", "번의 음성 통화"], ["2", "장의 사진 공유"], ["3", "명의 가족이 닿음"]];
+  const bars = liveWarmth
+    ? liveWarmth.bars
+    : demoWeek.map((h, i) => ({ h, label: demoDays[i], today: i === demoWeek.length - 1 }));
 
   // Logged in but not in a circle yet → invite them to set one up.
   if (status === "needs-onboarding") {
@@ -117,7 +130,7 @@ export default function FamilyDashboard() {
                   <p className="font-serif text-[22px] text-gt-ink">사랑이 닿은 오늘</p>
                 </div>
                 <div className="text-right">
-                  <div className="font-display text-[56px] font-medium leading-none text-gt-coral">{warmth}</div>
+                  <div className="font-display text-[56px] font-medium leading-none text-gt-coral">{warmthScore}</div>
                   <div className="font-display italic text-sm text-gt-muted">/ 100</div>
                 </div>
               </div>
@@ -127,11 +140,11 @@ export default function FamilyDashboard() {
                   <svg viewBox="0 0 100 100" className="h-full w-full">
                     <defs><clipPath id="hc"><path d="M50,88 C50,88 12,62 12,38 C12,24 22,16 32,16 C40,16 46,20 50,28 C54,20 60,16 68,16 C78,16 88,24 88,38 C88,62 50,88 50,88 Z" /></clipPath></defs>
                     <rect x="0" y="0" width="100" height="100" fill="#FBEEE0" clipPath="url(#hc)" />
-                    <rect x="0" y={100 - warmth} width="100" height={warmth} fill="#DC6B4A" clipPath="url(#hc)" style={{ transition: "all 0.8s ease" }} />
+                    <rect x="0" y={100 - warmthScore} width="100" height={warmthScore} fill="#DC6B4A" clipPath="url(#hc)" style={{ transition: "all 0.8s ease" }} />
                   </svg>
                 </div>
                 <div className="flex-1 space-y-1">
-                  {[["3", "개의 메시지"], ["1", "번의 음성 통화"], ["2", "장의 사진 공유"], ["3", "명의 가족이 닿음"]].map(([n, t], i) => (
+                  {statRows.map(([n, t], i) => (
                     <div key={i} className="flex items-center gap-2 text-xs text-gt-inkSoft">
                       <span className="h-1.5 w-1.5 rounded-full bg-gt-coral" />
                       <span className="font-display text-sm font-semibold text-gt-coral">{n}</span>{t}
@@ -142,20 +155,24 @@ export default function FamilyDashboard() {
 
               {/* weekly trend */}
               <div className="flex items-end justify-between gap-1.5 border-t border-gt-line pt-3.5">
-                {week.map((h, i) => {
-                  const today = i === week.length - 1;
-                  return (
-                    <div key={i} className="flex flex-1 flex-col items-center gap-1.5">
-                      <div className={`w-full rounded ${today ? "bg-gt-coral" : "bg-gt-coralSoft"}`} style={{ height: h }} />
-                      <span className={`font-display text-[10px] ${today ? "font-bold not-italic text-gt-coral" : "italic text-gt-muted"}`}>{days[i]}</span>
-                    </div>
-                  );
-                })}
+                {bars.map((b, i) => (
+                  <div key={i} className="flex flex-1 flex-col items-center gap-1.5">
+                    <div className={`w-full rounded ${b.today ? "bg-gt-coral" : "bg-gt-coralSoft"}`} style={{ height: b.h }} />
+                    <span className={`font-display text-[10px] ${b.today ? "font-bold not-italic text-gt-coral" : "italic text-gt-muted"}`}>{b.label}</span>
+                  </div>
+                ))}
               </div>
 
               <p className="mt-3.5 border-t border-dashed border-gt-line pt-3.5 text-xs leading-relaxed text-gt-inkSoft">
-                이번 주 어머니께 가장 따뜻한 사람: <strong className="text-gt-coral">막내딸 미경 (당신)</strong>.<br />
-                주말에 형제자매께 안부를 청해보세요.
+                {liveWarmth ? (
+                  liveWarmth.active ? (
+                    <>이번 주 가장 따뜻한 사람: <strong className="text-gt-coral">{liveWarmth.topName}{liveWarmth.topName === myName ? " (당신)" : ""}</strong>.<br />오늘도 부모님께 안부 한마디 전해보세요.</>
+                  ) : (
+                    <>아직 이번 주 활동이 없어요.<br /><strong className="text-gt-coral">{parentName} 어머니</strong>께 첫 안부를 전해보세요 💛</>
+                  )
+                ) : (
+                  <>이번 주 어머니께 가장 따뜻한 사람: <strong className="text-gt-coral">막내딸 미경 (당신)</strong>.<br />주말에 형제자매께 안부를 청해보세요.</>
+                )}
               </p>
             </div>
           </section>
@@ -347,6 +364,49 @@ function parentStatus(events: CareEvent[] | null, circle: CareCircle | null): Pa
     : call.ok ? "안부 확인 완료, 평안하세요"
     : "오늘 안부를 기다리고 있어요";
   return { headline, call, meal, activity, location };
+}
+
+type WarmthData = {
+  score: number;
+  bars: { h: number; label: string; today: boolean }[];
+  stats: [string, string][];
+  topName: string;
+  active: boolean;
+};
+
+/** Derives the warmth card from this week's real care events. */
+function warmthFrom(events: CareEvent[], members: CircleMember[], myName: string): WarmthData {
+  const DAY = 86_400_000;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const start = today.getTime() - 6 * DAY;
+  const counts = new Array(7).fill(0);
+  const wk: CareEvent[] = [];
+  for (const e of events) {
+    const d = new Date(e.created_at); d.setHours(0, 0, 0, 0);
+    const idx = Math.round((d.getTime() - start) / DAY);
+    if (idx >= 0 && idx < 7) { counts[idx]++; wk.push(e); }
+  }
+  const max = Math.max(1, ...counts);
+  const wd = ["일", "월", "화", "수", "목", "금", "토"];
+  const bars = counts.map((c, i) => ({
+    h: 6 + Math.round((c / max) * 40),
+    label: i === 6 ? "오늘" : wd[new Date(start + i * DAY).getDay()],
+    today: i === 6,
+  }));
+  const n = (t: string) => wk.filter((e) => e.type === t).length;
+  const stats: [string, string][] = [
+    [String(wk.length), "번의 따뜻한 활동"],
+    [String(n("checkin")), "번의 안부 응답"],
+    [String(n("med")), "번의 복약 체크"],
+    [String(members.length), "명의 가족이 함께"],
+  ];
+  const tally: Record<string, number> = {};
+  for (const e of wk) if (e.created_by) tally[e.created_by] = (tally[e.created_by] || 0) + 1;
+  let topName = myName, top = 0;
+  for (const [uid, c] of Object.entries(tally)) {
+    if (c > top) { top = c; topName = members.find((m) => m.user_id === uid)?.display_name || myName; }
+  }
+  return { score: Math.min(100, wk.length * 12), bars, stats, topName, active: wk.length > 0 };
 }
 
 interface MemberRowProps {
