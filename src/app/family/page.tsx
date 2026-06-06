@@ -3,14 +3,14 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Mic, Video, Send, ShieldPlus, CheckCircle2, Circle, Heart, UserPlus, UserMinus, Shield, ArrowRight, Smartphone } from "lucide-react";
+import { Mic, Video, Send, ShieldPlus, CheckCircle2, Circle, Heart, UserPlus, UserMinus, Shield, ArrowRight, Smartphone, LogOut } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { PushManager } from "@/components/push-manager";
 import { MedicalCard } from "@/components/medical-card";
 import { MedicationStatusCard } from "@/components/medication-tracker";
 import { Button } from "@/components/ui/button";
-import { useCircleState, useCircleEvents, useCircleMembers, updateMemberRole, removeMember } from "@/lib/circle";
+import { useCircleState, useCircleEvents, useCircleMembers, updateMemberRole, removeMember, signOut } from "@/lib/circle";
 import { useParentMode } from "@/lib/device";
 import type { CareEvent, CircleMember, CareCircle } from "@/lib/types";
 
@@ -66,6 +66,10 @@ export default function FamilyDashboard() {
             <Button asChild variant="coral" className="mt-6 w-full">
               <Link href="/setup"><UserPlus className="h-4 w-4" /> 가족 모임 시작하기 <ArrowRight className="h-4 w-4" /></Link>
             </Button>
+            <button onClick={() => { if (window.confirm("로그아웃 할까요?")) signOut(); }}
+              className="mt-4 inline-flex items-center gap-1.5 text-xs text-gt-mutedLight underline">
+              <LogOut className="h-3.5 w-3.5" /> 다른 계정으로 로그인
+            </button>
           </div>
         </main>
         <BottomNav />
@@ -89,6 +93,19 @@ export default function FamilyDashboard() {
             </div>
             {circle && <InviteChip code={circle.invite_code} onCopied={() => showToast("📋 초대코드를 복사했어요")} />}
           </header>
+
+          {/* 로그인 안 됨: 지금 화면은 가짜 데모 데이터라는 걸 분명히 알려준다 */}
+          {status === "demo" && (
+            <section className="px-5 pb-1">
+              <Link href="/login" className="flex items-center justify-between gap-3 rounded-2xl border border-gt-gold/40 bg-gt-goldSoft px-4 py-3 active:scale-[0.99] transition-transform">
+                <span className="text-[13px] leading-snug text-gt-ink">
+                  지금은 <strong className="text-gt-gold">둘러보기(데모)</strong> 화면이에요.<br />
+                  <span className="text-gt-muted">로그인하면 진짜 우리 가족 모임이 보여요.</span>
+                </span>
+                <span className="shrink-0 rounded-full bg-gt-ink px-3.5 py-2 text-xs font-semibold text-white">로그인</span>
+              </Link>
+            </section>
+          )}
 
           {/* 온기 점수 HERO */}
           <section className="px-5">
@@ -238,6 +255,18 @@ export default function FamilyDashboard() {
               </span>
             </button>
           </section>
+
+          {/* 로그아웃 (로그인 상태에서만) */}
+          {status !== "demo" && (
+            <section className="mt-3 px-5 pb-2">
+              <button
+                onClick={() => { if (window.confirm("로그아웃 할까요?")) signOut(); }}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-gt-line bg-white/60 px-4 py-3 text-[13px] font-semibold text-gt-muted active:scale-[0.99] transition-transform"
+              >
+                <LogOut className="h-4 w-4" /> 로그아웃
+              </button>
+            </section>
+          )}
         </div>
       </main>
 
