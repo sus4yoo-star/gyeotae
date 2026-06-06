@@ -3,6 +3,7 @@ import "./globals.css";
 import { ServiceWorker } from "@/components/service-worker";
 import { InstallPrompt } from "@/components/install-prompt";
 import { Splash } from "@/components/splash";
+import { CanonicalHost } from "@/components/canonical-host";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://gyeotae.netlify.app"),
@@ -48,6 +49,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ko">
       <body>
+        <CanonicalHost />
         <Splash />
         <ServiceWorker />
         {/* Phone-shaped app frame, centered on desktop */}
