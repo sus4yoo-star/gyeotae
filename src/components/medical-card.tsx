@@ -326,9 +326,10 @@ function Field({ Icon, label, tint, full, highlight, dnr, editing, value, onChan
       </div>
       {dnr ? (
         editing ? (
-          <button onClick={() => onDnr?.(!dnrValue)} className={`rounded-full px-2.5 py-1 text-[12px] font-semibold ${dnrValue ? "bg-gt-danger text-white" : "bg-gt-paper2 text-gt-muted"}`}>
-            {dnrValue ? "예 (DNR)" : "아니오"}
-          </button>
+          <div className="flex gap-1.5">
+            <button type="button" onClick={() => onDnr?.(true)} className={`flex-1 rounded-lg py-1.5 text-[13px] font-semibold transition-colors ${dnrValue ? "bg-gt-danger text-white" : "bg-gt-paper2 text-gt-ink"}`}>예</button>
+            <button type="button" onClick={() => onDnr?.(false)} className={`flex-1 rounded-lg py-1.5 text-[13px] font-semibold transition-colors ${!dnrValue ? "bg-gt-ink text-white" : "bg-gt-paper2 text-gt-ink"}`}>아니오</button>
+          </div>
         ) : (
           <p className={`font-serif text-[13px] ${dnrValue ? "font-bold text-gt-danger" : "text-gt-mutedLight"}`}>{dnrValue ? "예 — 사전연명의료의향 있음" : "아니오"}</p>
         )
