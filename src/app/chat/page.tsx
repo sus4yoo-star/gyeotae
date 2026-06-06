@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Send, Loader2, Users, Lock, Trash2 } from "lucide-react";
+import { Send, Loader2, Users, Lock, Trash2, Video } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { useCircleState, useCircleMembers } from "@/lib/circle";
 import { useParentMode } from "@/lib/device";
 import { ensureChannels, useMessages, sendMessage, recallMessage, ChannelType } from "@/lib/chat";
+import { requestStartCall } from "@/lib/call";
 
 export default function ChatPage() {
   const { circle, status } = useCircleState();
@@ -63,7 +64,12 @@ export default function ChatPage() {
       <main className="flex flex-1 flex-col overflow-hidden bg-gt-cream">
         {/* channel tabs */}
         <header className="shrink-0 border-b border-gt-line bg-gt-cream/95 px-4 pt-3 pb-2 backdrop-blur">
-          <p className="mb-2 font-display italic text-[11px] tracking-[0.14em] text-gt-terra">— 가족 대화 —</p>
+          <div className="mb-2 flex items-center justify-between">
+            <p className="font-display italic text-[11px] tracking-[0.14em] text-gt-terra">— 가족 대화 —</p>
+            <button onClick={requestStartCall} className="flex items-center gap-1 rounded-full bg-gt-sage px-3 py-1.5 text-xs font-semibold text-white active:scale-95">
+              <Video className="h-3.5 w-3.5" /> 영상통화
+            </button>
+          </div>
           {parentMode ? (
             <div className="flex items-center gap-1.5 text-gt-ink"><Users className="h-4 w-4 text-gt-coral" /><span className="font-serif text-base">온 가족</span></div>
           ) : (

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Mic, Video, Send, ShieldPlus, CheckCircle2, Circle, Heart, UserPlus, UserMinus, Shield, ArrowRight, Smartphone, LogOut, Loader2 } from "lucide-react";
+import { Mic, Video, Send, ShieldPlus, CheckCircle2, Circle, Heart, UserPlus, UserMinus, Shield, ArrowRight, Smartphone, LogOut, Loader2, Images, BarChart3 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { PushManager } from "@/components/push-manager";
@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useCircleState, useCircleEvents, useCircleMembers, updateMemberRole, removeMember, signOut, updateCircleSettings } from "@/lib/circle";
 import { useActiveSOS, ackSOS, resolveSOS } from "@/lib/sos";
 import { useVoiceMessages } from "@/lib/voice";
+import { requestStartCall } from "@/lib/call";
 import { useParentMode } from "@/lib/device";
 import type { CareEvent, CircleMember, CareCircle } from "@/lib/types";
 
@@ -264,9 +265,33 @@ export default function FamilyDashboard() {
           {/* Actions */}
           <section className="mt-4 grid grid-cols-2 gap-2.5 px-5">
             <ActionBtn icon={Mic} main="음성 보내기" sub="엄마에게" color="coral" onClick={() => bump(5)} />
-            <ActionBtn icon={Video} main="영상통화" sub="바로 연결" color="sage" onClick={() => showToast("📹 영상통화 연결 중...")} />
+            <ActionBtn icon={Video} main="영상통화" sub="바로 연결" color="sage" onClick={requestStartCall} />
             <ActionBtn icon={Send} main="손주 영상" sub="엄마께 전달" color="gold" onClick={() => bump(5)} />
             <ActionBtn icon={ShieldPlus} main="의료카드" sub="응급 정보" color="danger" onClick={() => setMedicalOpen(true)} />
+          </section>
+
+          {/* 가족 앨범 */}
+          <section className="mt-3 px-5">
+            <Link href="/album" className="gt-card flex items-center gap-3 p-3.5 active:scale-[0.99] transition-transform">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gt-goldSoft text-gt-gold"><Images className="h-4.5 w-4.5" style={{ width: 18, height: 18 }} /></span>
+              <span className="flex-1">
+                <span className="block text-[13px] font-semibold text-gt-ink">가족 앨범</span>
+                <span className="block text-[11px] text-gt-muted">사진·영상을 공개 범위 골라서 나눠요</span>
+              </span>
+              <ArrowRight className="h-4 w-4 text-gt-mutedLight" />
+            </Link>
+          </section>
+
+          {/* 주간 안심 리포트 */}
+          <section className="mt-3 px-5">
+            <Link href="/report" className="gt-card flex items-center gap-3 p-3.5 active:scale-[0.99] transition-transform">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gt-sageLight text-gt-sage"><BarChart3 className="h-4.5 w-4.5" style={{ width: 18, height: 18 }} /></span>
+              <span className="flex-1">
+                <span className="block text-[13px] font-semibold text-gt-ink">주간 안심 리포트</span>
+                <span className="block text-[11px] text-gt-muted">이번 주 복약·안부·활동 요약</span>
+              </span>
+              <ArrowRight className="h-4 w-4 text-gt-mutedLight" />
+            </Link>
           </section>
 
           {/* 함께하는 가족 (실제 모임 구성원) */}
