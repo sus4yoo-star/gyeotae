@@ -12,11 +12,12 @@ import { BottomNav } from "@/components/bottom-nav";
 import { MedicationTracker } from "@/components/medication-tracker";
 import { MealTracker } from "@/components/meal-tracker";
 import { MedicalCard } from "@/components/medical-card";
-import { fireSOS, useMyCircle } from "@/lib/circle";
+import { fireSOS, useCircleState } from "@/lib/circle";
 
 export default function ParentHome() {
   const router = useRouter();
-  const circle = useMyCircle();
+  const { circle, status } = useCircleState();
+  const demoMode = status === "demo";
   const [parentMode, setParentMode] = useParentMode();
   const [time, setTime] = useState("");
   const [date, setDate] = useState("");
@@ -76,8 +77,9 @@ export default function ParentHome() {
             </div>
             <p className="mt-5 font-serif text-[17px] leading-relaxed text-gt-inkSoft">
               어머니, <em className="font-display not-italic text-gt-coral">평안한 아침</em>이에요.<br />
-              오늘 <strong className="text-gt-coral">막내딸의 음성</strong>과 손녀{" "}
-              <strong className="text-gt-coral">지윤이의 영상</strong>이 도착했어요.
+              {demoMode
+                ? <>오늘 <strong className="text-gt-coral">막내딸의 음성</strong>과 손녀 <strong className="text-gt-coral">지윤이의 영상</strong>이 도착했어요.</>
+                : <>오늘도 가족이 <strong className="text-gt-coral">곁에서</strong> 함께하고 있어요.</>}
             </p>
           </header>
 
@@ -121,16 +123,18 @@ export default function ParentHome() {
             <QuickBtn icon={HeartPulse} label="의료카드" sub="응급 정보" color="terra" onClick={() => setMedicalOpen(true)} />
           </section>
 
-          {/* 손주 편지함 */}
-          <div className="section-label mt-9 px-7">
-            <span className="sl-num">01</span><span className="sl-title">오늘 손주들의 마음</span>
-          </div>
-          <section className="grid grid-cols-2 gap-3 px-4">
-            <GrandchildCard name="지윤" age="5 · 손녀" badge="▶ 영상" tone="jiyun"
-              quote="할머니 보고싶어요! 종이접기 했어요" onClick={() => showToast("🎀 지윤이의 영상을 재생합니다")} />
-            <GrandchildCard name="시우" age="7 · 외손자" badge="🎵 음성" tone="siwoo"
-              quote="할머니, 어제 축구 시합에서 이겼어요" onClick={() => showToast("⚽ 시우의 음성을 재생합니다")} />
-          </section>
+          {/* 손주 편지함 (데모 콘텐츠 — 실제 데이터 연동 전까지 둘러보기에서만) */}
+          {demoMode && (<>
+            <div className="section-label mt-9 px-7">
+              <span className="sl-num">01</span><span className="sl-title">오늘 손주들의 마음</span>
+            </div>
+            <section className="grid grid-cols-2 gap-3 px-4">
+              <GrandchildCard name="지윤" age="5 · 손녀" badge="▶ 영상" tone="jiyun"
+                quote="할머니 보고싶어요! 종이접기 했어요" onClick={() => showToast("🎀 지윤이의 영상을 재생합니다")} />
+              <GrandchildCard name="시우" age="7 · 외손자" badge="🎵 음성" tone="siwoo"
+                quote="할머니, 어제 축구 시합에서 이겼어요" onClick={() => showToast("⚽ 시우의 음성을 재생합니다")} />
+            </section>
+          </>)}
 
           {/* 엄마의 이야기 (memoir → 셀라 bridge) */}
           <div className="section-label mt-9 px-7">
@@ -156,7 +160,8 @@ export default function ParentHome() {
             </div>
           </section>
 
-          {/* 막내딸 음성 */}
+          {/* 막내딸 음성 (데모 콘텐츠) */}
+          {demoMode && (<>
           <div className="section-label mt-9 px-7">
             <span className="sl-num">03</span><span className="sl-title">막내딸이 보낸 음성</span>
           </div>
@@ -179,8 +184,10 @@ export default function ParentHome() {
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gt-ink text-white"><Play className="ml-0.5 h-4 w-4" fill="white" /></span>
             </button>
           </section>
+          </>)}
 
-          {/* 추억 */}
+          {/* 추억 (데모 콘텐츠) */}
+          {demoMode && (<>
           <div className="section-label mt-9 px-7">
             <span className="sl-num">04</span><span className="sl-title">추억의 한 컷</span>
           </div>
@@ -191,6 +198,7 @@ export default function ParentHome() {
               <Polaroid scene="wedding" date="2022.04.16" caption="큰며느리 결혼식" rot={-1.5} />
             </div>
           </section>
+          </>)}
 
           {/* 오늘의 말씀 */}
           <section className="px-5 pt-4">
