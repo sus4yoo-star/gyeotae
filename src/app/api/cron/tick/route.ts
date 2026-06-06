@@ -58,7 +58,26 @@ async function handle(req: NextRequest) {
     escalations++;
   }
 
-  return NextResponse.json({ ok: true, silenceAlerts, escalations });
+  // 3) 기념일·제사·생신 알림 (며칠 전, 1년에 한 번)
+  let occasionNotices = 0;
+  const ky = kst.getUTCFullYear(), km = kst.getUTCMonth() + 1, kd = kst.getUTCDate();
+  const todayIdx = km * 100 + kd;
+  const todayUTC = Date.UTC(ky, km - 1, kd);
+  const { data: occs } = await admin.from("occasions")
+    .select("id, circle_id, title, type, month, day, notify_days_before, last_notified_year");
+  for (const o of occs ?? []) {
+    const occYear = (o.month * 100 + o.day) >= todayIdx ? ky : ky + 1;
+    const days = Math.round((Date.UTC(occYear, o.month - 1, o.day) - todayUTC) / 86400_000);
+    if (days >= 0 && days <= (o.notify_days_before ?? 3) && o.last_notified_year !== occYear) {
+      await admin.from("occasions").update({ last_notified_year: occYear }).eq("id", o.id);
+      const emoji = o.type === "memorial" ? "🕯️" : o.type === "birthday" ? "🎂" : "💐";
+      const when = days === 0 ? "오늘이에요" : `${days}일 뒤예요`;
+      if (canPush) await pushCircle(admin, o.circle_id, `${emoji} ${o.title}`, `${o.title} — ${when}.`);
+      occasionNotices++;
+    }
+  }
+
+  return NextResponse.json({ ok: true, silenceAlerts, escalations, occasionNotices });
 }
 
 function inQuietHours(kst: Date, start?: string | null, end?: string | null): boolean {
