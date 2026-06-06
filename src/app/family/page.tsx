@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Mic, Video, Send, ShieldPlus, CheckCircle2, Circle, Heart, UserPlus, UserMinus, Shield, ArrowRight, Smartphone, LogOut, Loader2, Images, BarChart3 } from "lucide-react";
+import { Mic, Video, Send, ShieldPlus, CheckCircle2, Circle, Heart, UserPlus, UserMinus, Shield, ArrowRight, Smartphone, LogOut, Loader2, Images, BarChart3, CalendarHeart, Users, ChevronDown } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { PushManager } from "@/components/push-manager";
@@ -20,7 +20,7 @@ import type { CareEvent, CircleMember, CareCircle } from "@/lib/types";
 export default function FamilyDashboard() {
   const router = useRouter();
   const [parentMode, setParentMode] = useParentMode();
-  const { circle, status } = useCircleState();
+  const { circle, circles, status, selectCircle } = useCircleState();
   const events = useCircleEvents(circle?.id);
   const { members, meId, reload } = useCircleMembers(circle?.id);
   const { alert: sosAlert } = useActiveSOS(circle?.id);
@@ -126,7 +126,12 @@ export default function FamilyDashboard() {
               </div>
               <PushManager circleId={circle?.id} />
             </div>
-            {circle && <InviteChip code={circle.invite_code} onCopied={() => showToast("📋 초대코드를 복사했어요")} />}
+            {circle && (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <CircleSwitcher circles={circles} current={circle} onSelect={selectCircle} />
+                <InviteChip code={circle.invite_code} onCopied={() => showToast("📋 초대코드를 복사했어요")} />
+              </div>
+            )}
           </header>
 
           {/* 실시간 SOS 배너 */}
@@ -289,6 +294,18 @@ export default function FamilyDashboard() {
               <span className="flex-1">
                 <span className="block text-[13px] font-semibold text-gt-ink">주간 안심 리포트</span>
                 <span className="block text-[11px] text-gt-muted">이번 주 복약·안부·활동 요약</span>
+              </span>
+              <ArrowRight className="h-4 w-4 text-gt-mutedLight" />
+            </Link>
+          </section>
+
+          {/* 기념일·제사 */}
+          <section className="mt-3 px-5">
+            <Link href="/occasions" className="gt-card flex items-center gap-3 p-3.5 active:scale-[0.99] transition-transform">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gt-coralLight text-gt-coralDeep"><CalendarHeart className="h-4.5 w-4.5" style={{ width: 18, height: 18 }} /></span>
+              <span className="flex-1">
+                <span className="block text-[13px] font-semibold text-gt-ink">기념일·제사</span>
+                <span className="block text-[11px] text-gt-muted">생신·기일을 미리 알려드려요</span>
               </span>
               <ArrowRight className="h-4 w-4 text-gt-mutedLight" />
             </Link>
@@ -581,12 +598,41 @@ function MemberRow({ m, isMe, isOwner, canManage, onToggleRole, onRemove }: Memb
   );
 }
 
+function CircleSwitcher({ circles, current, onSelect }: { circles: CareCircle[]; current: CareCircle; onSelect: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-1.5 rounded-full border border-gt-line bg-white/70 px-3 py-1.5 text-xs font-semibold text-gt-ink">
+        <Users className="h-3.5 w-3.5 text-gt-coral" /> {current.parent_name}
+        <ChevronDown className="h-3 w-3 text-gt-muted" />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 top-full z-30 mt-1 w-52 overflow-hidden rounded-2xl border border-gt-line bg-white shadow-xl">
+            {circles.map((c) => (
+              <button key={c.id} onClick={() => { onSelect(c.id); setOpen(false); }}
+                className={`flex w-full items-center gap-2 px-4 py-2.5 text-left text-[13px] ${c.id === current.id ? "bg-gt-coralSoft font-semibold text-gt-coral" : "text-gt-ink"}`}>
+                {c.id === current.id ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5 text-gt-mutedLight" />}
+                {c.parent_name}
+              </button>
+            ))}
+            <Link href="/setup?add=1" className="flex items-center gap-2 border-t border-gt-line px-4 py-2.5 text-[13px] font-semibold text-gt-coral">
+              <UserPlus className="h-3.5 w-3.5" /> 새 부모님 추가
+            </Link>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function InviteChip({ code, onCopied }: { code: string; onCopied: () => void }) {
   const copy = async () => {
     try { await navigator.clipboard.writeText(code); onCopied(); } catch {}
   };
   return (
-    <button onClick={copy} className="mt-3 flex items-center gap-2 rounded-full border border-gt-coral/30 bg-gt-coralSoft px-3 py-1.5 text-xs text-gt-coralDeep">
+    <button onClick={copy} className="flex items-center gap-2 rounded-full border border-gt-coral/30 bg-gt-coralSoft px-3 py-1.5 text-xs text-gt-coralDeep">
       <UserPlus className="h-3.5 w-3.5" />
       가족 초대코드 <strong className="font-display tracking-[0.15em]">{code.toUpperCase()}</strong>
     </button>

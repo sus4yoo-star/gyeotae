@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Heart, Loader2, AlertCircle, UserPlus, KeyRound, Check, Copy, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AmovFooter } from "@/components/amov-footer";
-import { useCircleState, createCircle, joinCircle } from "@/lib/circle";
+import { useCircleState, createCircle, joinCircle, setSelectedCircleId } from "@/lib/circle";
 import type { CareCircle } from "@/lib/types";
 
 type Mode = "create" | "join";
@@ -28,8 +28,11 @@ export default function SetupPage() {
   // join fields
   const [code, setCode] = useState("");
 
-  // Already in a circle → nothing to set up.
-  useEffect(() => { if (status === "ready") router.replace("/family"); }, [status, router]);
+  // Already in a circle → go to dashboard, unless explicitly adding another (?add=1).
+  useEffect(() => {
+    const adding = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("add");
+    if (status === "ready" && !adding) router.replace("/family");
+  }, [status, router]);
 
   if (status === "loading") {
     return (
@@ -72,10 +75,12 @@ export default function SetupPage() {
           parent_location: parentLocation.trim() || null,
           display_name: displayName.trim() || undefined,
         });
+        setSelectedCircleId(circle.id);
         setCreated(circle);
       } else {
         if (code.trim().length < 4) { setErr("초대코드를 확인해주세요."); setLoading(false); return; }
-        await joinCircle(code, displayName.trim() || undefined);
+        const joined = await joinCircle(code, displayName.trim() || undefined);
+        setSelectedCircleId(joined.id);
         router.replace("/family");
         return;
       }
