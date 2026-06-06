@@ -33,8 +33,31 @@ export type CircleStatus = "loading" | "demo" | "needs-onboarding" | "ready";
  *  - "demo": Supabase off, or nobody logged in → browse the demo freely.
  *  - "needs-onboarding": logged in but not in any circle yet.
  *  - "ready": logged in and a member of a circle. */
+const SELECTED_KEY = "gt-circle";
+export function getSelectedCircleId(): string | null { try { return localStorage.getItem(SELECTED_KEY); } catch { return null; } }
+export function setSelectedCircleId(id: string) { try { localStorage.setItem(SELECTED_KEY, id); } catch {} }
+
+/** Every circle the current user owns or belongs to (for multi-parent support). */
+export async function getMyCircles(): Promise<CareCircle[]> {
+  const sb = createClient();
+  if (!sb) return [];
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return [];
+  const results = new Map<string, CareCircle>();
+  const { data: owned } = await sb.from("care_circles").select("*").eq("owner_id", user.id);
+  for (const c of (owned as CareCircle[]) ?? []) results.set(c.id, c);
+  const { data: mem } = await sb.from("circle_members").select("circle_id").eq("user_id", user.id);
+  const ids = (mem ?? []).map((m: { circle_id: string }) => m.circle_id).filter((id) => !results.has(id));
+  if (ids.length) {
+    const { data: mc } = await sb.from("care_circles").select("*").in("id", ids);
+    for (const c of (mc as CareCircle[]) ?? []) results.set(c.id, c);
+  }
+  return [...results.values()];
+}
+
 export function useCircleState() {
   const [circle, setCircle] = useState<CareCircle | null>(null);
+  const [circles, setCircles] = useState<CareCircle[]>([]);
   const [status, setStatus] = useState<CircleStatus>("loading");
 
   const reload = useCallback(async () => {
@@ -43,13 +66,21 @@ export function useCircleState() {
     if (!sb) { setStatus("demo"); return; }
     const { data: { user } } = await sb.auth.getUser();
     if (!user) { setStatus("demo"); return; }
-    const c = await getMyCircle();
-    if (c) { setCircle(c); setStatus("ready"); }
-    else { setCircle(null); setStatus("needs-onboarding"); }
+    const list = await getMyCircles();
+    if (list.length === 0) { setCircle(null); setCircles([]); setStatus("needs-onboarding"); return; }
+    const savedId = getSelectedCircleId();
+    setCircles(list);
+    setCircle(list.find((c) => c.id === savedId) ?? list[0]);
+    setStatus("ready");
   }, []);
 
+  const selectCircle = useCallback((id: string) => {
+    setSelectedCircleId(id);
+    setCircle((prev) => circles.find((c) => c.id === id) ?? prev);
+  }, [circles]);
+
   useEffect(() => { reload().catch(() => setStatus("demo")); }, [reload]);
-  return { circle, status, reload };
+  return { circle, circles, status, reload, selectCircle };
 }
 
 /** Creates a new care circle for the current user and makes them its admin.
