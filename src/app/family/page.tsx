@@ -10,7 +10,9 @@ import { PushManager } from "@/components/push-manager";
 import { MedicalCard } from "@/components/medical-card";
 import { MedicationStatusCard } from "@/components/medication-tracker";
 import { Button } from "@/components/ui/button";
-import { useCircleState, useCircleEvents, useCircleMembers, updateMemberRole, removeMember, signOut } from "@/lib/circle";
+import { useCircleState, useCircleEvents, useCircleMembers, updateMemberRole, removeMember, signOut, updateCircleSettings } from "@/lib/circle";
+import { useActiveSOS, ackSOS, resolveSOS } from "@/lib/sos";
+import { useVoiceMessages } from "@/lib/voice";
 import { useParentMode } from "@/lib/device";
 import type { CareEvent, CircleMember, CareCircle } from "@/lib/types";
 
@@ -20,6 +22,8 @@ export default function FamilyDashboard() {
   const { circle, status } = useCircleState();
   const events = useCircleEvents(circle?.id);
   const { members, meId, reload } = useCircleMembers(circle?.id);
+  const { alert: sosAlert } = useActiveSOS(circle?.id);
+  const { items: voices } = useVoiceMessages(circle?.id);
   const [warmth, setWarmth] = useState(67);
   const [toast, setToast] = useState<string | null>(null);
   const [medicalOpen, setMedicalOpen] = useState(false);
@@ -27,6 +31,9 @@ export default function FamilyDashboard() {
 
   // This device is locked to the parent view — keep it on /home.
   useEffect(() => { if (parentMode) router.replace("/home"); }, [parentMode, router]);
+
+  const [silenceHrs, setSilenceHrs] = useState(12);
+  useEffect(() => { if (circle?.silence_threshold_hours) setSilenceHrs(circle.silence_threshold_hours); }, [circle?.silence_threshold_hours]);
 
   const toggleRole = async (m: CircleMember) => {
     const next = m.role === "admin" ? "member" : "admin";
@@ -120,6 +127,45 @@ export default function FamilyDashboard() {
             </div>
             {circle && <InviteChip code={circle.invite_code} onCopied={() => showToast("📋 초대코드를 복사했어요")} />}
           </header>
+
+          {/* 실시간 SOS 배너 */}
+          {sosAlert && (
+            <section className="px-5 pb-1 pt-1">
+              {sosAlert.status === "active" ? (
+                <div className="animate-pulse rounded-2xl bg-gt-danger p-4 text-white">
+                  <p className="font-serif text-lg font-bold">🚨 {parentName} 어머니 SOS</p>
+                  <p className="text-sm opacity-90">지금 바로 확인이 필요해요</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button onClick={() => ackSOS(sosAlert, myName).then(() => showToast("가족에게 '지금 갈게요'라고 알렸어요"))}
+                      className="rounded-full bg-white px-4 py-2 text-sm font-bold text-gt-danger active:scale-95">내가 갈게요</button>
+                    <a href="tel:119" className="rounded-full bg-white/20 px-4 py-2 text-sm font-bold">119</a>
+                    {sosAlert.lat != null && (
+                      <a href={`https://maps.google.com/?q=${sosAlert.lat},${sosAlert.lng}`} target="_blank" rel="noreferrer"
+                        className="rounded-full bg-white/20 px-4 py-2 text-sm font-bold">위치 보기</a>
+                    )}
+                    <button onClick={() => { if (window.confirm("SOS를 해결됨으로 표시할까요?")) resolveSOS(sosAlert).then(() => showToast("해결됨으로 표시했어요")); }}
+                      className="rounded-full bg-white/20 px-4 py-2 text-sm font-bold">해결됨</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-gt-gold/40 bg-gt-goldSoft p-4">
+                  <p className="font-serif text-base font-bold text-gt-ink">✅ SOS 확인됨 — 가족이 가는 중</p>
+                  <p className="mt-0.5 text-xs text-gt-muted">
+                    {members.find((m) => m.user_id === sosAlert.ack_by)?.display_name || "가족"} 님이 응답했어요
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <a href="tel:119" className="rounded-full bg-gt-paper2 px-3.5 py-1.5 text-xs font-semibold text-gt-ink">119</a>
+                    {sosAlert.lat != null && (
+                      <a href={`https://maps.google.com/?q=${sosAlert.lat},${sosAlert.lng}`} target="_blank" rel="noreferrer"
+                        className="rounded-full bg-gt-paper2 px-3.5 py-1.5 text-xs font-semibold text-gt-ink">위치 보기</a>
+                    )}
+                    <button onClick={() => { if (window.confirm("SOS를 해결됨으로 표시할까요?")) resolveSOS(sosAlert).then(() => showToast("해결됨으로 표시했어요")); }}
+                      className="rounded-full bg-gt-paper2 px-3.5 py-1.5 text-xs font-semibold text-gt-ink">해결로 표시</button>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
 
           {/* 로그인 안 됨: 지금 화면은 가짜 데모 데이터라는 걸 분명히 알려준다 */}
           {status === "demo" && (
@@ -243,6 +289,34 @@ export default function FamilyDashboard() {
             </section>
           )}
 
+          {/* 받은 음성 메시지 */}
+          {voices.length > 0 && (
+            <section className="mt-5 px-5">
+              <div className="gt-card overflow-hidden">
+                <div className="flex items-center justify-between border-b border-gt-line px-5 py-4">
+                  <span className="font-serif text-base text-gt-ink">받은 음성</span>
+                  <span className="rounded-full bg-gt-coralSoft px-2.5 py-1 font-display italic text-xs text-gt-coral">{voices.length}건</span>
+                </div>
+                <div className="divide-y divide-gt-line">
+                  {voices.map((v) => (
+                    <div key={v.id} className="flex items-start gap-3 px-5 py-3">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gt-coralLight text-sm">🎙️</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[13px] font-semibold text-gt-ink">
+                          {members.find((m) => m.user_id === v.author)?.display_name || "가족"}{v.duration_sec ? ` · ${v.duration_sec}초` : ""}
+                        </p>
+                        {v.url
+                          ? <audio controls preload="none" src={v.url} className="mt-1.5 h-9 w-full" />
+                          : <p className="mt-1 text-[11px] text-gt-muted">불러오는 중…</p>}
+                        <p className="mt-0.5 font-display italic text-[11px] text-gt-muted">{relativeTime(v.created_at)}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
+
           {/* Activity feed */}
           <section className="mt-5 px-5">
             <div className="gt-card overflow-hidden">
@@ -286,6 +360,29 @@ export default function FamilyDashboard() {
               </span>
             </button>
           </section>
+
+          {/* 무응답 알림 설정 (소유자만) */}
+          {circle && circle.owner_id === meId && (
+            <section className="mt-5 px-5">
+              <div className="gt-card p-4">
+                <p className="text-[13px] font-semibold text-gt-ink">무응답 알림</p>
+                <p className="mt-0.5 text-[11px] leading-snug text-gt-muted">이 시간 이상 부모님 활동이 없으면 알려드려요 (야간 21~7시 제외)</p>
+                <div className="mt-2.5 flex gap-2">
+                  {[6, 12, 24].map((h) => (
+                    <button key={h}
+                      onClick={async () => {
+                        setSilenceHrs(h);
+                        try { await updateCircleSettings(circle.id, { silence_threshold_hours: h }); showToast(`${h}시간으로 설정했어요`); }
+                        catch { showToast("설정 저장에 실패했어요"); }
+                      }}
+                      className={`flex-1 rounded-xl py-2 text-sm font-semibold transition-colors ${silenceHrs === h ? "bg-gt-coral text-white" : "bg-gt-paper2 text-gt-ink"}`}>
+                      {h}시간
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
 
           {/* 로그아웃 (로그인 상태에서만) */}
           {status !== "demo" && (

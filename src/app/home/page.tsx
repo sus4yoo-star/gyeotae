@@ -12,7 +12,9 @@ import { BottomNav } from "@/components/bottom-nav";
 import { MedicationTracker } from "@/components/medication-tracker";
 import { MealTracker } from "@/components/meal-tracker";
 import { MedicalCard } from "@/components/medical-card";
-import { fireSOS, useCircleState } from "@/lib/circle";
+import { VoiceRecorder } from "@/components/voice-recorder";
+import { useCircleState } from "@/lib/circle";
+import { createSOS } from "@/lib/sos";
 
 export default function ParentHome() {
   const router = useRouter();
@@ -50,8 +52,8 @@ export default function ParentHome() {
     setSosOpen(true);
     setSosStage(0);
     [1, 2, 3, 4].forEach((n) => setTimeout(() => setSosStage(n), n * 700));
-    // Real mode: log the event and push to the whole family (safe no-op in demo).
-    fireSOS(circle?.id ?? null).catch(() => {});
+    // Real mode: create a live alert with location + push the whole family.
+    createSOS(circle?.id ?? null).catch(() => {});
   };
 
   return (
@@ -113,6 +115,11 @@ export default function ParentHome() {
             <p className="text-center font-serif text-sm leading-relaxed text-gt-muted">
               위급할 때 한 번만 누르세요<br />가족 모두에게 곧바로 알려드려요
             </p>
+          </section>
+
+          {/* 가족에게 음성 보내기 */}
+          <section className="px-5 pb-1">
+            <VoiceRecorder circleId={circle?.id ?? null} onToast={showToast} />
           </section>
 
           {/* Quick actions */}
