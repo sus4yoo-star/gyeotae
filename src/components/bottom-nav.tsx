@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, HeartHandshake, Phone, Type } from "lucide-react";
+import { Home, HeartHandshake, Phone, Type, MessageCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useParentMode } from "@/lib/device";
@@ -10,6 +10,7 @@ import { useParentMode } from "@/lib/device";
 const tabs = [
   { href: "/home", label: "부모님", icon: Home },
   { href: "/family", label: "자녀", icon: HeartHandshake },
+  { href: "/chat", label: "대화", icon: MessageCircle },
   { href: "/call", label: "안부", icon: Phone },
 ];
 
