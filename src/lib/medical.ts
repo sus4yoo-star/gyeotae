@@ -43,15 +43,19 @@ export const DEMO_MEDICAL: MedicalProfile = {
 };
 
 function normalize(d: Record<string, unknown>): MedicalProfile {
+  const s = (k: string) => (typeof d[k] === "string" ? (d[k] as string) : "");
   const ec = d.emergency_contacts;
+  // Pick only MedicalProfile fields — don't leak DB columns (circle_id/updated_at…)
   return {
-    ...EMPTY_MEDICAL,
-    ...d,
+    sex: s("sex"), blood_type: s("blood_type"), conditions: s("conditions"),
+    allergies: s("allergies"), medications: s("medications"), surgeries: s("surgeries"),
+    history: s("history"), doctor: s("doctor"), hospital: s("hospital"), insurance: s("insurance"),
+    notes: s("notes"),
     height_cm: (d.height_cm as number) ?? null,
     weight_kg: (d.weight_kg as number) ?? null,
     dnr: !!d.dnr,
     emergency_contacts: Array.isArray(ec) ? (ec as EmergencyContact[]) : [],
-  } as MedicalProfile;
+  };
 }
 
 export async function getMedicalProfile(circleId: string): Promise<MedicalProfile | null> {
