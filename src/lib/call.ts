@@ -30,7 +30,7 @@ export function useCall(circleId?: string | null, myName = "가족") {
   const callIdRef = useRef("");
   const meRef = useRef("");
   const offerRef = useRef<RTCSessionDescriptionInit | null>(null);
-  const pendingIce = useRef<RTCIceCandidateInit[]>([]);
+  const pendingIce = useRef<{ callId: string; candidate: RTCIceCandidateInit }[]>([]);
   const answeredRef = useRef(false);
   const localRef = useRef<MediaStream | null>(null);
   const phaseRef = useRef<CallPhase>("idle");
@@ -44,8 +44,9 @@ export function useCall(circleId?: string | null, myName = "가족") {
   const flushIce = useCallback(async () => {
     const pc = pcRef.current;
     if (!pc) return;
-    for (const c of pendingIce.current) await pc.addIceCandidate(c).catch(() => {});
-    pendingIce.current = [];
+    const mine = pendingIce.current.filter((x) => x.callId === callIdRef.current);
+    pendingIce.current = pendingIce.current.filter((x) => x.callId !== callIdRef.current);
+    for (const x of mine) await pc.addIceCandidate(x.candidate).catch(() => {});
   }, []);
 
   const endLocal = useCallback(() => {
@@ -79,7 +80,7 @@ export function useCall(circleId?: string | null, myName = "가족") {
       if (p.kind === "ring") {
         if (phaseRef.current !== "idle") return; // busy → ignore
         callIdRef.current = p.callId; offerRef.current = p.sdp ?? null;
-        pendingIce.current = []; answeredRef.current = false;
+        answeredRef.current = false; // keep any ICE buffered before this ring
         setPeerName(p.senderName || "가족"); setPhase("incoming");
       } else if (p.kind === "answer" && p.callId === callIdRef.current && pcRef.current) {
         if (answeredRef.current) return; // first answerer wins (no glare)
@@ -87,10 +88,14 @@ export function useCall(circleId?: string | null, myName = "가족") {
         if (p.sdp) await pcRef.current.setRemoteDescription(p.sdp).catch(() => {});
         await flushIce();
         setPhase("connected");
-      } else if (p.kind === "ice" && p.callId === callIdRef.current && p.candidate) {
-        // Buffer candidates that arrive before the peer connection / remote desc is ready.
-        if (pcRef.current && pcRef.current.remoteDescription) await pcRef.current.addIceCandidate(p.candidate).catch(() => {});
-        else pendingIce.current.push(p.candidate);
+      } else if (p.kind === "ice" && p.candidate) {
+        // Apply now if the connection is ready for this call; otherwise buffer
+        // (handles candidates arriving before our ring/answer is processed).
+        if (p.callId === callIdRef.current && pcRef.current && pcRef.current.remoteDescription) {
+          await pcRef.current.addIceCandidate(p.candidate).catch(() => {});
+        } else {
+          pendingIce.current.push({ callId: p.callId, candidate: p.candidate });
+        }
       } else if (p.kind === "bye" && p.callId === callIdRef.current) {
         endLocal();
       }

@@ -34,6 +34,9 @@ create policy "add media" on public.media_items for insert
 drop policy if exists "own media" on public.media_items;
 create policy "own media" on public.media_items for update
   using (uploader = auth.uid()) with check (uploader = auth.uid());
+drop policy if exists "own media delete" on public.media_items;
+create policy "own media delete" on public.media_items for delete
+  using (uploader = auth.uid());
 
 -- 실시간
 do $$

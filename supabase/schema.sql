@@ -50,8 +50,12 @@ create table if not exists public.push_subscriptions (
   user_id uuid not null references auth.users(id) on delete cascade,
   circle_id uuid references public.care_circles(id) on delete cascade,
   subscription jsonb not null,
+  endpoint text,
   created_at timestamptz default now()
 );
+-- 같은 브라우저(endpoint)가 중복 등록돼 알림이 여러 번 가지 않게
+create unique index if not exists push_sub_user_endpoint
+  on public.push_subscriptions (user_id, endpoint);
 
 -- 6) 복약 기록 (부모님↔자녀 기기 간 동기화용, 날짜·복용시간대별 1행)
 create table if not exists public.med_logs (

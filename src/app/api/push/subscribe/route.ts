@@ -9,9 +9,13 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
 
   const { subscription, circle_id } = await req.json();
-  const { error } = await supabase.from("push_subscriptions").insert({
-    user_id: user.id, circle_id: circle_id ?? null, subscription,
-  });
+  const endpoint = subscription?.endpoint ?? null;
+  // Upsert on (user_id, endpoint) so re-subscribing the same browser doesn't
+  // pile up duplicate rows (which would send duplicate notifications).
+  const { error } = await supabase.from("push_subscriptions").upsert(
+    { user_id: user.id, circle_id: circle_id ?? null, subscription, endpoint },
+    { onConflict: "user_id,endpoint" },
+  );
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
   return NextResponse.json({ ok: true });
 }
