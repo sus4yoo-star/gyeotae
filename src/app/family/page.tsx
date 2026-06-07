@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Mic, Video, Send, ShieldPlus, CheckCircle2, Circle, Heart, UserPlus, UserMinus, Shield, ArrowRight, Smartphone, LogOut, Loader2, Images, BarChart3, CalendarHeart, Users, ChevronDown } from "lucide-react";
+import { Mic, Video, Send, ShieldPlus, CheckCircle2, Circle, Heart, UserPlus, UserMinus, Shield, ArrowRight, Smartphone, LogOut, Loader2, Images, BarChart3, CalendarHeart, Users, ChevronDown, HeartPulse } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { PushManager } from "@/components/push-manager";
@@ -306,6 +306,18 @@ export default function FamilyDashboard() {
               <span className="flex-1">
                 <span className="block text-[13px] font-semibold text-gt-ink">기념일·제사</span>
                 <span className="block text-[11px] text-gt-muted">생신·기일을 미리 알려드려요</span>
+              </span>
+              <ArrowRight className="h-4 w-4 text-gt-mutedLight" />
+            </Link>
+          </section>
+
+          {/* 활력징후 */}
+          <section className="mt-3 px-5">
+            <Link href="/vitals" className="gt-card flex items-center gap-3 p-3.5 active:scale-[0.99] transition-transform">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gt-dangerSoft text-gt-danger"><HeartPulse className="h-4.5 w-4.5" style={{ width: 18, height: 18 }} /></span>
+              <span className="flex-1">
+                <span className="block text-[13px] font-semibold text-gt-ink">활력징후</span>
+                <span className="block text-[11px] text-gt-muted">혈압·혈당 기록과 추이</span>
               </span>
               <ArrowRight className="h-4 w-4 text-gt-mutedLight" />
             </Link>
