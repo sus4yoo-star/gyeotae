@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Heart, Mic, Send } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
-import { logEvent, useMyCircle } from "@/lib/circle";
+import { logEvent, useCircleState } from "@/lib/circle";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -18,7 +18,7 @@ const SIM = [
 const CHIPS = [["잘 잤어요", "어제 잠을 설쳤네"], ["기분 좋아요", "조금 외롭네"], ["아침 먹었어요", "아직 안 먹었어요"], ["약 먹었어요", "깜빡했네"], ["교회 가요", "집에 있을래요"], []];
 
 export default function CallPage() {
-  const circle = useMyCircle();
+  const { circle } = useCircleState();
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
