@@ -145,7 +145,8 @@ export async function updateCircleSettings(circleId: string, patch: Record<strin
 export async function logEvent(circleId: string | null, type: string, message: string) {
   const sb = createClient();
   if (!sb || !circleId) return;
-  await sb.from("care_events").insert({ circle_id: circleId, type, message });
+  const { data: { user } } = await sb.auth.getUser();
+  await sb.from("care_events").insert({ circle_id: circleId, type, message, created_by: user?.id ?? null });
 }
 
 /** Today's date as YYYY-MM-DD (local), matching the med_logs.log_date column. */

@@ -77,9 +77,12 @@ begin
   return NEW;
 end $$;
 
+-- 부모님 쪽 신호(복약·식사·SOS·안부·이야기)만 활동으로 인정 →
+-- 자녀가 사진/음성을 공유해도 '무응답' 감지가 풀리지 않게.
 drop trigger if exists on_event_bump on public.care_events;
 create trigger on_event_bump after insert on public.care_events
-  for each row execute function public.bump_activity();
+  for each row when (NEW.type in ('med','meal','sos','checkin','memoir'))
+  execute function public.bump_activity();
 
 drop trigger if exists on_med_bump on public.med_logs;
 create trigger on_med_bump after insert or update on public.med_logs
