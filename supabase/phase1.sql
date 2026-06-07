@@ -146,12 +146,16 @@ drop policy if exists "members rw voice" on public.voice_messages;
 create policy "members rw voice" on public.voice_messages
   for all using (public.is_circle_member(circle_id)) with check (public.is_circle_member(circle_id));
 
--- 실시간: SOS 상태 변화를 가족 화면이 즉시 수신
+-- 실시간: SOS 상태 + 음성 메시지를 가족 화면이 즉시 수신
 do $$
 begin
   if not exists (select 1 from pg_publication_tables
     where pubname='supabase_realtime' and schemaname='public' and tablename='sos_alerts') then
     alter publication supabase_realtime add table public.sos_alerts;
+  end if;
+  if not exists (select 1 from pg_publication_tables
+    where pubname='supabase_realtime' and schemaname='public' and tablename='voice_messages') then
+    alter publication supabase_realtime add table public.voice_messages;
   end if;
 end $$;
 
